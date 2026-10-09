@@ -1,26 +1,460 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Hind+Siliguri:wght@300;400;500;600&display=swap");
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────
+   CHOLO BONDHU — Design Tokens
+   ───────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand Palette */
+  --color-maroon: #6f1830;
+  --color-maroon-light: #8b2040;
+  --color-maroon-dark: #4d0f21;
+  --color-vermilion: #e74732;
+  --color-vermilion-light: #f06050;
+  --color-ivory: #fff5e6;
+  --color-ivory-warm: #fffcf7;
+  --color-gold: #d99b32;
+  --color-gold-light: #e8b54a;
+  --color-gold-muted: #c4891e;
+  --color-ink: #211a1b;
+  --color-ink-soft: #3d3032;
+  --color-rose: #e8d1c9;
+  --color-rose-muted: #d4b5a8;
+  --color-olive: #74764c;
+  --color-night: #17141a;
+  --color-night-soft: #201c24;
+
+  /* Semantic Tokens */
+  --bg-primary: var(--color-ivory-warm);
+  --bg-surface: #ffffff;
+  --bg-elevated: var(--color-ivory);
+  --bg-accent: var(--color-maroon);
+  --text-primary: var(--color-ink);
+  --text-secondary: var(--color-ink-soft);
+  --text-muted: #7a6465;
+  --text-inverse: #ffffff;
+  --text-on-accent: #ffffff;
+  --border-subtle: rgba(111, 24, 48, 0.1);
+  --border-light: rgba(111, 24, 48, 0.15);
+  --border-medium: rgba(111, 24, 48, 0.25);
+  --action-primary: var(--color-maroon);
+  --action-primary-hover: var(--color-maroon-light);
+  --action-secondary: var(--color-gold);
+  --action-secondary-hover: var(--color-gold-light);
+  --accent-vermilion: var(--color-vermilion);
+  --selected: var(--color-maroon);
+  --success: #2d7a4f;
+  --warning: #c87d12;
+  --error: #c0392b;
+  --disabled: #b0a0a2;
+
+  /* Typography */
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-bengali: "Hind Siliguri", "Noto Sans Bengali", sans-serif;
+
+  /* Spacing / Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(33, 26, 27, 0.08), 0 1px 2px rgba(33, 26, 27, 0.06);
+  --shadow-md: 0 4px 12px rgba(33, 26, 27, 0.1), 0 2px 6px rgba(33, 26, 27, 0.08);
+  --shadow-lg: 0 12px 32px rgba(33, 26, 27, 0.12), 0 4px 12px rgba(33, 26, 27, 0.08);
+  --shadow-xl: 0 20px 48px rgba(33, 26, 27, 0.16);
+  --shadow-maroon: 0 4px 16px rgba(111, 24, 48, 0.25);
+
+  /* Z-index layers */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-nav: 300;
+  --z-toast: 400;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─────────────────────────────────────────────
+   BASE RESET & TYPOGRAPHY
+   ───────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Headings use Playfair Display */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: 1.2;
+  color: var(--color-ink);
+}
+
+h4, h5, h6 {
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+/* Bengali text */
+.bengali {
+  font-family: var(--font-bengali);
+}
+
+/* ─────────────────────────────────────────────
+   SCROLLBAR STYLING
+   ───────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-maroon);
+}
+
+/* ─────────────────────────────────────────────
+   FOCUS STYLES (Accessibility)
+   ───────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--color-maroon);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─────────────────────────────────────────────
+   UTILITY CLASSES
+   ───────────────────────────────────────────── */
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+.font-bengali {
+  font-family: var(--font-bengali);
+}
+
+/* Gradient text for hero */
+.gradient-text {
+  background: linear-gradient(135deg, var(--color-maroon) 0%, var(--color-vermilion) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-gold {
+  background: linear-gradient(135deg, var(--color-gold-muted) 0%, var(--color-gold-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Card base */
+.card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Button base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 1;
+  padding: 12px 20px;
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-maroon);
+  color: white;
+  box-shadow: var(--shadow-maroon);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-maroon-light);
+  box-shadow: 0 6px 20px rgba(111, 24, 48, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: white;
+  color: var(--color-maroon);
+  border: 1.5px solid var(--border-medium);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-maroon);
+  background: var(--color-ivory);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px solid transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.btn-gold {
+  background: linear-gradient(135deg, var(--color-gold-muted) 0%, var(--color-gold) 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(217, 155, 50, 0.3);
+}
+
+.btn-gold:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(217, 155, 50, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+}
+
+.badge-verified {
+  background: #dcf5e7;
+  color: #1d6b3e;
+}
+
+.badge-curated {
+  background: #fef0d5;
+  color: #8a5c00;
+}
+
+.badge-demo {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.badge-maroon {
+  background: rgba(111, 24, 48, 0.1);
+  color: var(--color-maroon);
+}
+
+/* ─────────────────────────────────────────────
+   HERO SECTION GRADIENT
+   ───────────────────────────────────────────── */
+
+.hero-gradient {
+  background: linear-gradient(
+    160deg,
+    var(--color-maroon-dark) 0%,
+    var(--color-maroon) 40%,
+    #9e2a3a 70%,
+    var(--color-vermilion) 100%
+  );
+}
+
+.hero-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(23, 20, 26, 0.3) 0%,
+    rgba(111, 24, 48, 0.6) 60%,
+    rgba(77, 15, 33, 0.85) 100%
+  );
+}
+
+/* ─────────────────────────────────────────────
+   SHIMMER LOADING ANIMATION
+   ───────────────────────────────────────────── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0e8e8 0%,
+    #f8f0f0 50%,
+    #f0e8e8 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ─────────────────────────────────────────────
+   REDUCED MOTION
+   ───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   MOBILE BOTTOM NAV SAFE AREA
+   ───────────────────────────────────────────── */
+
+.mobile-safe-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* Page content push for bottom nav */
+.page-with-bottom-nav {
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 16px));
+}
+
+/* ─────────────────────────────────────────────
+   PANDAL CARD CATEGORY COLOURS
+   ───────────────────────────────────────────── */
+
+.tag-iconic { background: rgba(111,24,48,0.1); color: var(--color-maroon); }
+.tag-artistic { background: rgba(116,118,76,0.12); color: var(--color-olive); }
+.tag-traditional { background: rgba(217,155,50,0.15); color: var(--color-gold-muted); }
+.tag-less_crowded { background: rgba(45,122,79,0.1); color: #2d7a4f; }
+.tag-photography { background: rgba(50,100,200,0.1); color: #2954a0; }
+.tag-family_friendly { background: rgba(200,125,18,0.1); color: var(--color-warning); }
+.tag-street_food { background: rgba(231,71,50,0.1); color: var(--color-vermilion); }
+.tag-bengali_food { background: rgba(111,24,48,0.08); color: var(--color-maroon); }
+
+/* ─────────────────────────────────────────────
+   ITINERARY TIMELINE LINE
+   ───────────────────────────────────────────── */
+
+.timeline-line {
+  position: absolute;
+  left: 19px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--color-maroon), var(--color-vermilion));
+  opacity: 0.25;
+}
+
+/* ─────────────────────────────────────────────
+   MAP CONTAINER
+   ───────────────────────────────────────────── */
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────
+   CUSTOM ANIMATIONS
+   ───────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease forwards;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* ─────────────────────────────────────────────
+   ALPANA DIVIDER (decorative pattern line)
+   ───────────────────────────────────────────── */
+
+.alpana-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-gold);
+  opacity: 0.6;
+}
+
+.alpana-divider::before,
+.alpana-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--color-gold), transparent);
 }
