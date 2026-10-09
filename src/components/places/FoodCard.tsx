@@ -1,6 +1,6 @@
 "use client";
 
-import { Utensils, MapPin, Clock, Tag } from "lucide-react";
+import { Utensils, MapPin, Clock, Tag, Navigation } from "lucide-react";
 import type { FoodHotspot } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { cn } from "@/lib/utils";
@@ -126,16 +126,41 @@ export function FoodCard({
         )}
 
         {/* Dietary notes */}
-        {food.dietaryNotes && food.dietaryNotes.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {food.dietaryNotes.map((note) => (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {food.dietaryNotes && food.dietaryNotes.length > 0 ? (
+            food.dietaryNotes.map((note) => (
               <span
                 key={note}
                 className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#FFF5E6] text-[#7a6465]"
               >
                 {note.replace("_", " ")}
               </span>
-            ))}
+            ))
+          ) : (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-stone-100 text-[#7a6465] italic">
+              Dietary: Unknown
+            </span>
+          )}
+          {food.openingHoursConfidence && food.openingHoursConfidence !== "standard_operating_window" && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+              Hours Unverified
+            </span>
+          )}
+        </div>
+
+        {/* Directions link if coordinates available */}
+        {food.latitude && food.longitude && (
+          <div className="mb-2">
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${food.latitude},${food.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline"
+              aria-label={`Get directions to ${food.name} in external Maps`}
+            >
+              <Navigation size={11} />
+              Open Directions
+            </a>
           </div>
         )}
 

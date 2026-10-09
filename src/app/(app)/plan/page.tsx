@@ -14,12 +14,28 @@ import {
   Utensils,
   ChevronDown,
   ChevronUp,
+  Zap,
+  Landmark,
+  Palette,
+  Users,
+  Camera,
+  Footprints,
+  Accessibility,
+  Check,
+  Edit2,
+  Info,
+  SlidersHorizontal,
 } from "lucide-react";
 import type {
   ItineraryPreferences,
   ExperienceTag,
   TransportMode,
   GeneratedItinerary,
+  WalkingTolerance,
+  ItineraryPacing,
+  PriceRange,
+  FoodCategory,
+  ItineraryPreset,
 } from "@/types";
 import {
   generateItinerary,
@@ -29,7 +45,9 @@ import {
 } from "@/lib/itinerary-engine";
 import { savePlan, getShareableUrl, getPlanById, decodeSharedItinerary } from "@/lib/saved-plans";
 import { PANDAL_DATA } from "@/data/pandals";
+import { ITINERARY_PRESETS } from "@/data/presets";
 import { ItineraryStopCard, RouteSummary } from "@/components/itinerary/ItineraryStopCard";
+import { ReportFeedbackModal } from "@/components/ui/ReportFeedbackModal";
 import { NoPlanEmptyState } from "@/components/ui/EmptyState";
 import dynamic from "next/dynamic";
 
@@ -53,6 +71,7 @@ const LOCALITIES = [
 
 const TIME_OPTIONS = [
   { value: 120, label: "2 hours" },
+  { value: 180, label: "3 hours" },
   { value: 240, label: "4 hours" },
   { value: 360, label: "6 hours" },
   { value: 480, label: "Full day (8h)" },
@@ -71,27 +90,68 @@ const TAGS: { tag: ExperienceTag; label: string; emoji: string }[] = [
 ];
 
 const TRANSPORT_OPTIONS: { mode: TransportMode; label: string; note: string }[] = [
-  { mode: "walking", label: "Walking", note: "Best for short routes" },
+  { mode: "walking", label: "Walking", note: "Best for short neighbourhood clusters" },
+  { mode: "metro_walking", label: "Metro + Walk", note: "Fastest & avoids street gridlock" },
   { mode: "public_transport", label: "Bus / Tram", note: "Authentic Kolkata experience" },
-  { mode: "metro_walking", label: "Metro + Walk", note: "Fast & efficient" },
-  { mode: "taxi", label: "Taxi / Car", note: "Comfortable, slower in traffic" },
-  { mode: "flexible", label: "Flexible", note: "Mix of options" },
+  { mode: "taxi", label: "Taxi / Cab", note: "Comfortable, higher traffic delays" },
+  { mode: "flexible", label: "Flexible", note: "Dynamic multi-modal combination" },
 ];
 
+const PACING_OPTIONS: { pacing: ItineraryPacing; label: string; note: string }[] = [
+  { pacing: "relaxed", label: "Relaxed", note: "Extra queue buffers & longer rest periods" },
+  { pacing: "standard", label: "Balanced", note: "Standard Kolkata festival pacing" },
+  { pacing: "packed", label: "Fast-Paced", note: "Pack maximum pandals with quick visits" },
+];
+
+const WALKING_OPTIONS: { tolerance: WalkingTolerance; label: string; note: string }[] = [
+  { tolerance: "low", label: "Short walks only", note: "Under 10 mins; auto/rickshaw preferred" },
+  { tolerance: "moderate", label: "Moderate", note: "15–20 mins pedestrian tolerance" },
+  { tolerance: "high", label: "High endurance", note: "Comfortable walking long Puja avenues" },
+];
+
+const FOOD_PREF_CATEGORIES: { category: FoodCategory; label: string }[] = [
+  { category: "bengali_cuisine", label: "Bengali Cuisine" },
+  { category: "biryani", label: "Biryani" },
+  { category: "rolls_kathi", label: "Kathi Rolls" },
+  { category: "sweets", label: "Sweets & Mishti" },
+  { category: "street_food", label: "Street Food" },
+  { category: "restaurant", label: "Dine-in Restaurant" },
+];
+
+function getPresetIcon(name: string) {
+  switch (name) {
+    case "Zap": return <Zap size={16} />;
+    case "Landmark": return <Landmark size={16} />;
+    case "Palette": return <Palette size={16} />;
+    case "Users": return <Users size={16} />;
+    case "Utensils": return <Utensils size={16} />;
+    case "Camera": return <Camera size={16} />;
+    case "Footprints": return <Footprints size={16} />;
+    default: return <SlidersHorizontal size={16} />;
+  }
+}
+
 // ─────────────────────────────────────────────
-// Plan Page
+// Plan Page Component
 // ─────────────────────────────────────────────
 
 function PlanPageInner() {
   const searchParams = useSearchParams();
 
-  // Planner form state
+  // 10 Dimensions of Planner form state
   const [locality, setLocality] = useState(LOCALITIES[0]);
   const [availableMinutes, setAvailableMinutes] = useState(240);
   const [startTime, setStartTime] = useState("10:00");
   const [selectedTags, setSelectedTags] = useState<ExperienceTag[]>(["iconic", "artistic"]);
   const [transportMode, setTransportMode] = useState<TransportMode>("metro_walking");
   const [includeFood, setIncludeFood] = useState(true);
+  const [foodCategories, setFoodCategories] = useState<FoodCategory[]>(["bengali_cuisine", "street_food"]);
+  const [maxBudget, setMaxBudget] = useState<PriceRange | "any">("any");
+  const [walkingTolerance, setWalkingTolerance] = useState<WalkingTolerance>("moderate");
+  const [pacing, setPacing] = useState<ItineraryPacing>("standard");
+  const [targetStopCount, setTargetStopCount] = useState(4);
+  const [requiresAccessibility, setRequiresAccessibility] = useState(false);
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
   // Itinerary state
   const [itinerary, setItinerary] = useState<GeneratedItinerary | null>(null);
@@ -99,6 +159,7 @@ function PlanPageInner() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState<"saved" | "shared" | null>(null);
+  const [reportingPlace, setReportingPlace] = useState<{ placeId: string; placeName: string } | null>(null);
 
   // View mode: "form" | "itinerary"
   const [view, setView] = useState<"form" | "itinerary">("form");
@@ -139,6 +200,9 @@ function PlanPageInner() {
           transportMode: "metro_walking",
           includeFood: true,
           lockedStopIds: [pandal.id],
+          pacing: "standard",
+          walkingTolerance: "moderate",
+          targetStopCount: 4,
         };
         const result = generateItinerary(prefs);
         setItinerary(result);
@@ -147,9 +211,35 @@ function PlanPageInner() {
     }
   }, [searchParams]);
 
+  function handleApplyPreset(preset: ItineraryPreset) {
+    setActivePresetId(preset.id);
+    const p = preset.preferences;
+    if (p.startingLocality) {
+      const matched = LOCALITIES.find((l) => l.toLowerCase().includes(p.startingLocality!.toLowerCase())) || p.startingLocality;
+      setLocality(matched);
+    }
+    if (p.availableMinutes) setAvailableMinutes(p.availableMinutes);
+    if (p.startTime) setStartTime(p.startTime);
+    if (p.transportMode) setTransportMode(p.transportMode);
+    if (p.experienceTags) setSelectedTags(p.experienceTags);
+    if (p.pacing) setPacing(p.pacing);
+    if (p.walkingTolerance) setWalkingTolerance(p.walkingTolerance);
+    if (p.targetStopCount) setTargetStopCount(p.targetStopCount);
+    if (p.requiresAccessibility !== undefined) setRequiresAccessibility(p.requiresAccessibility);
+    if (p.includeFood !== undefined) setIncludeFood(p.includeFood);
+    if (p.foodCategories) setFoodCategories(p.foodCategories);
+    if (p.maxBudget) setMaxBudget(p.maxBudget);
+  }
+
   function toggleTag(tag: ExperienceTag) {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  }
+
+  function toggleFoodCategory(cat: FoodCategory) {
+    setFoodCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
   }
 
@@ -163,14 +253,20 @@ function PlanPageInner() {
       experienceTags: selectedTags,
       transportMode,
       includeFood,
+      walkingTolerance,
+      pacing,
+      targetStopCount,
+      requiresAccessibility,
+      foodCategories: includeFood && foodCategories.length > 0 ? foodCategories : undefined,
+      maxBudget: includeFood && maxBudget !== "any" ? maxBudget : undefined,
     };
-    // Simulate brief loading for UX (engine is synchronous)
+
     setTimeout(() => {
       const result = generateItinerary(prefs);
       setItinerary(result);
       setIsGenerating(false);
       setView("itinerary");
-    }, 800);
+    }, 700);
   }
 
   function handleRemoveStop(stopId: string) {
@@ -205,7 +301,7 @@ function PlanPageInner() {
     if (!itinerary) return;
     const url = getShareableUrl(itinerary);
     if (navigator.share) {
-      navigator.share({ title: "My Puja Itinerary", url }).catch(() => {});
+      navigator.share({ title: "My Puja Itinerary — Cholo Bondhu", url }).catch(() => {});
     } else {
       navigator.clipboard.writeText(url);
       setSavedFeedback("shared");
@@ -221,20 +317,33 @@ function PlanPageInner() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <p className="text-[#D99B32] text-sm font-semibold uppercase tracking-widest mb-1">
-          Build Your Journey
+          Intelligent Route Planner
         </p>
         <h1 className="font-display text-3xl md:text-4xl text-[#211A1B]">
           Plan My Pujo
         </h1>
+        <p className="text-[#7a6465] text-sm mt-1">
+          Tailored to your pace, starting point, accessibility needs, and favourite food spots.
+        </p>
       </div>
 
       {/* Feedback toast */}
       {savedFeedback && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-[#6F1830] text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-lg animate-fade-in-up">
-          {savedFeedback === "saved" ? "✓ Plan saved!" : "✓ Link copied!"}
+          {savedFeedback === "saved" ? "✓ Plan saved to device!" : "✓ Shareable route link copied!"}
         </div>
+      )}
+
+      {/* Ground Condition Reporting Modal */}
+      {reportingPlace && (
+        <ReportFeedbackModal
+          isOpen={true}
+          onClose={() => setReportingPlace(null)}
+          placeId={reportingPlace.placeId}
+          placeName={reportingPlace.placeName}
+        />
       )}
 
       {view === "form" ? (
@@ -249,8 +358,22 @@ function PlanPageInner() {
           toggleTag={toggleTag}
           transportMode={transportMode}
           setTransportMode={setTransportMode}
+          pacing={pacing}
+          setPacing={setPacing}
+          walkingTolerance={walkingTolerance}
+          setWalkingTolerance={setWalkingTolerance}
+          targetStopCount={targetStopCount}
+          setTargetStopCount={setTargetStopCount}
+          requiresAccessibility={requiresAccessibility}
+          setRequiresAccessibility={setRequiresAccessibility}
           includeFood={includeFood}
           setIncludeFood={setIncludeFood}
+          foodCategories={foodCategories}
+          toggleFoodCategory={toggleFoodCategory}
+          maxBudget={maxBudget}
+          setMaxBudget={setMaxBudget}
+          activePresetId={activePresetId}
+          onApplyPreset={handleApplyPreset}
           onGenerate={handleGenerate}
           isGenerating={isGenerating}
         />
@@ -266,6 +389,7 @@ function PlanPageInner() {
             onMoveUp={handleMoveUp}
             onMoveDown={handleMoveDown}
             onToggleLock={handleToggleLock}
+            onReport={(placeId, placeName) => setReportingPlace({ placeId, placeName })}
             onRegenerate={handleRegenerate}
             onSave={handleSave}
             onShare={handleShare}
@@ -277,8 +401,39 @@ function PlanPageInner() {
 }
 
 // ─────────────────────────────────────────────
-// Planner Form
+// Planner Form Component
 // ─────────────────────────────────────────────
+
+interface PlannerFormProps {
+  locality: string;
+  setLocality: (v: string) => void;
+  availableMinutes: number;
+  setAvailableMinutes: (v: number) => void;
+  startTime: string;
+  setStartTime: (v: string) => void;
+  selectedTags: ExperienceTag[];
+  toggleTag: (t: ExperienceTag) => void;
+  transportMode: TransportMode;
+  setTransportMode: (v: TransportMode) => void;
+  pacing: ItineraryPacing;
+  setPacing: (v: ItineraryPacing) => void;
+  walkingTolerance: WalkingTolerance;
+  setWalkingTolerance: (v: WalkingTolerance) => void;
+  targetStopCount: number;
+  setTargetStopCount: (v: number) => void;
+  requiresAccessibility: boolean;
+  setRequiresAccessibility: (v: boolean) => void;
+  includeFood: boolean;
+  setIncludeFood: (v: boolean) => void;
+  foodCategories: FoodCategory[];
+  toggleFoodCategory: (c: FoodCategory) => void;
+  maxBudget: PriceRange | "any";
+  setMaxBudget: (b: PriceRange | "any") => void;
+  activePresetId: string | null;
+  onApplyPreset: (preset: ItineraryPreset) => void;
+  onGenerate: () => void;
+  isGenerating: boolean;
+}
 
 function PlannerForm({
   locality, setLocality,
@@ -286,20 +441,72 @@ function PlannerForm({
   startTime, setStartTime,
   selectedTags, toggleTag,
   transportMode, setTransportMode,
+  pacing, setPacing,
+  walkingTolerance, setWalkingTolerance,
+  targetStopCount, setTargetStopCount,
+  requiresAccessibility, setRequiresAccessibility,
   includeFood, setIncludeFood,
+  foodCategories, toggleFoodCategory,
+  maxBudget, setMaxBudget,
+  activePresetId, onApplyPreset,
   onGenerate, isGenerating,
-}: {
-  locality: string; setLocality: (v: string) => void;
-  availableMinutes: number; setAvailableMinutes: (v: number) => void;
-  startTime: string; setStartTime: (v: string) => void;
-  selectedTags: ExperienceTag[]; toggleTag: (t: ExperienceTag) => void;
-  transportMode: TransportMode; setTransportMode: (v: TransportMode) => void;
-  includeFood: boolean; setIncludeFood: (v: boolean) => void;
-  onGenerate: () => void; isGenerating: boolean;
-}) {
+}: PlannerFormProps) {
   return (
-    <div className="max-w-2xl space-y-6">
-      {/* Step 1 — Location */}
+    <div className="max-w-3xl space-y-6">
+      {/* Quick Curated Presets Bar */}
+      <div className="card p-5 bg-gradient-to-br from-[#FFFDF9] to-[#FFF5E6] border border-[#D99B32]/30">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Zap size={18} className="text-[#D99B32]" />
+            <h2 className="font-display font-semibold text-[#211A1B] text-base">
+              Curated Festival Trails
+            </h2>
+          </div>
+          <span className="text-[11px] text-[#7a6465] font-medium">
+            Tap a trail to auto-fill preferences
+          </span>
+        </div>
+        <p className="text-xs text-[#7a6465] mb-3">
+          Hand-crafted itineraries calibrated with authentic Kolkata transit times and crowds.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {ITINERARY_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              onClick={() => onApplyPreset(preset)}
+              className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                activePresetId === preset.id
+                  ? "bg-[#6F1830] border-[#6F1830] text-white shadow-md"
+                  : "bg-white border-[rgba(111,24,48,0.15)] text-[#211A1B] hover:border-[#6F1830] hover:bg-[#FFF5E6]/40"
+              }`}
+              aria-pressed={activePresetId === preset.id}
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <div className="flex items-center gap-1.5 font-semibold text-xs">
+                    <span className={activePresetId === preset.id ? "text-amber-200" : "text-[#D99B32]"}>
+                      {getPresetIcon(preset.iconName)}
+                    </span>
+                    <span>{preset.name}</span>
+                  </div>
+                  {activePresetId === preset.id && (
+                    <Check size={14} className="text-amber-200 flex-shrink-0" />
+                  )}
+                </div>
+                <div className={`text-[10px] line-clamp-1 font-bengali ${activePresetId === preset.id ? "text-amber-100" : "text-[#7a6465]"}`}>
+                  {preset.nameBengali}
+                </div>
+              </div>
+              <p className={`text-[11px] mt-1.5 leading-tight ${activePresetId === preset.id ? "text-white/80" : "text-[#7a6465]"}`}>
+                {preset.tagline}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Step 1 — Starting Location */}
       <FormSection
         number="01"
         icon={<MapPin size={20} />}
@@ -317,18 +524,18 @@ function PlannerForm({
         </select>
       </FormSection>
 
-      {/* Step 2 — Time */}
+      {/* Step 2 — Time & Schedule */}
       <FormSection
         number="02"
         icon={<Clock size={20} />}
         title="How much time do you have?"
       >
-        <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
           {TIME_OPTIONS.map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setAvailableMinutes(value)}
-              className={`py-3 px-4 rounded-xl border text-sm font-medium transition-all ${
+              className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
                 availableMinutes === value
                   ? "bg-[#6F1830] border-[#6F1830] text-white"
                   : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
@@ -341,7 +548,7 @@ function PlannerForm({
         </div>
         <div className="flex items-center gap-3">
           <label className="text-sm text-[#7a6465]" htmlFor="start-time">
-            Start time:
+            Target start time:
           </label>
           <input
             id="start-time"
@@ -353,11 +560,11 @@ function PlannerForm({
         </div>
       </FormSection>
 
-      {/* Step 3 — Preferences */}
+      {/* Step 3 — Pandal Themes & Interests */}
       <FormSection
         number="03"
         icon={<Sliders size={20} />}
-        title="What do you enjoy?"
+        title="What do you enjoy seeing most?"
       >
         <div className="flex flex-wrap gap-2">
           {TAGS.map(({ tag, label, emoji }) => (
@@ -378,26 +585,26 @@ function PlannerForm({
         </div>
       </FormSection>
 
-      {/* Step 4 — Transport */}
+      {/* Step 4 — Transport Mode */}
       <FormSection
         number="04"
         icon={<Navigation2 size={20} />}
         title="How will you travel?"
       >
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {TRANSPORT_OPTIONS.map(({ mode, label, note }) => (
             <button
               key={mode}
               onClick={() => setTransportMode(mode)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm transition-all ${
+              className={`flex flex-col text-left px-3.5 py-2.5 rounded-xl border transition-all ${
                 transportMode === mode
                   ? "bg-[#6F1830] border-[#6F1830] text-white"
                   : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
               }`}
               aria-pressed={transportMode === mode}
             >
-              <span className="font-medium">{label}</span>
-              <span className={`text-xs ${transportMode === mode ? "text-white/70" : "text-[#7a6465]"}`}>
+              <span className="font-semibold text-sm">{label}</span>
+              <span className={`text-[11px] mt-0.5 ${transportMode === mode ? "text-white/80" : "text-[#7a6465]"}`}>
                 {note}
               </span>
             </button>
@@ -405,31 +612,198 @@ function PlannerForm({
         </div>
       </FormSection>
 
-      {/* Step 5 — Food */}
+      {/* Step 5 — Pacing & Walking Tolerance */}
       <FormSection
         number="05"
-        icon={<Utensils size={20} />}
-        title="Include food stops?"
+        icon={<Footprints size={20} />}
+        title="Pacing, Walking & Physical Comfort"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
+              Tour Pacing:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {PACING_OPTIONS.map(({ pacing: pVal, label, note }) => (
+                <button
+                  key={pVal}
+                  onClick={() => setPacing(pVal)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    pacing === pVal
+                      ? "bg-[#6F1830] border-[#6F1830] text-white"
+                      : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
+                  }`}
+                  aria-pressed={pacing === pVal}
+                >
+                  <div className="font-semibold text-xs">{label}</div>
+                  <div className={`text-[10px] mt-0.5 ${pacing === pVal ? "text-white/80" : "text-[#7a6465]"}`}>
+                    {note}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
+              Walking Tolerance:
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {WALKING_OPTIONS.map(({ tolerance, label, note }) => (
+                <button
+                  key={tolerance}
+                  onClick={() => setWalkingTolerance(tolerance)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    walkingTolerance === tolerance
+                      ? "bg-[#6F1830] border-[#6F1830] text-white"
+                      : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
+                  }`}
+                  aria-pressed={walkingTolerance === tolerance}
+                >
+                  <div className="font-semibold text-xs">{label}</div>
+                  <div className={`text-[10px] mt-0.5 ${walkingTolerance === tolerance ? "text-white/80" : "text-[#7a6465]"}`}>
+                    {note}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Accessibility toggle */}
+          <div className="flex items-center justify-between p-3 rounded-xl bg-[#FFF5E6]/60 border border-[rgba(111,24,48,0.1)]">
+            <div className="flex items-center gap-2.5">
+              <Accessibility size={18} className="text-[#6F1830]" />
+              <div>
+                <span className="text-xs font-semibold text-[#211A1B] block">
+                  Wheelchair / Step-Free Priority
+                </span>
+                <span className="text-[11px] text-[#7a6465]">
+                  Favours pandals with ramp entries (note: barricade diversions may still apply)
+                </span>
+              </div>
+            </div>
+            <button
+              role="switch"
+              aria-checked={requiresAccessibility}
+              onClick={() => setRequiresAccessibility(!requiresAccessibility)}
+              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                requiresAccessibility ? "bg-[#6F1830]" : "bg-[#E8D1C9]"
+              }`}
+              aria-label="Prioritize wheelchair accessible venues"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  requiresAccessibility ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </FormSection>
+
+      {/* Step 6 — Preferred Number of Stops */}
+      <FormSection
+        number="06"
+        icon={<SlidersHorizontal size={20} />}
+        title="Preferred Number of Stops"
       >
         <div className="flex items-center gap-3">
-          <button
-            role="switch"
-            aria-checked={includeFood}
-            onClick={() => setIncludeFood(!includeFood)}
-            className={`relative w-12 h-6 rounded-full transition-colors ${
-              includeFood ? "bg-[#6F1830]" : "bg-[#E8D1C9]"
-            }`}
-            aria-label="Include food stops in itinerary"
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                includeFood ? "translate-x-6" : "translate-x-0"
+          <span className="text-xs text-[#7a6465]">Stops count target:</span>
+          {[2, 3, 4, 5, 6].map((count) => (
+            <button
+              key={count}
+              onClick={() => setTargetStopCount(count)}
+              className={`w-10 h-10 rounded-xl border text-sm font-bold transition-all ${
+                targetStopCount === count
+                  ? "bg-[#6F1830] border-[#6F1830] text-white"
+                  : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
               }`}
-            />
-          </button>
-          <span className="text-sm text-[#3d3032]">
-            {includeFood ? "Yes, add a food stop" : "Skip food stops"}
+              aria-pressed={targetStopCount === count}
+            >
+              {count}
+            </button>
+          ))}
+          <span className="text-[11px] text-[#7a6465] ml-2 italic">
+            Engine fits stops to available time budget
           </span>
+        </div>
+      </FormSection>
+
+      {/* Step 7 — Practical Food Planning */}
+      <FormSection
+        number="07"
+        icon={<Utensils size={20} />}
+        title="Food & Culinary Preferences"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <button
+              role="switch"
+              aria-checked={includeFood}
+              onClick={() => setIncludeFood(!includeFood)}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                includeFood ? "bg-[#6F1830]" : "bg-[#E8D1C9]"
+              }`}
+              aria-label="Include food stops in itinerary"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  includeFood ? "translate-x-6" : "translate-x-0"
+                }`}
+              />
+            </button>
+            <span className="text-sm font-medium text-[#3d3032]">
+              {includeFood ? "Yes, include a food stop along the route" : "Skip food stops"}
+            </span>
+          </div>
+
+          {includeFood && (
+            <div className="space-y-3 pt-2 border-t border-[rgba(111,24,48,0.1)]">
+              <div>
+                <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
+                  Cuisine Preferences:
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {FOOD_PREF_CATEGORIES.map(({ category, label }) => (
+                    <button
+                      key={category}
+                      onClick={() => toggleFoodCategory(category)}
+                      className={`text-xs px-3 py-1.5 rounded-xl border transition-all ${
+                        foodCategories.includes(category)
+                          ? "bg-[#6F1830] border-[#6F1830] text-white"
+                          : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
+                      }`}
+                      aria-pressed={foodCategories.includes(category)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
+                  Budget Level:
+                </label>
+                <div className="flex items-center gap-2">
+                  {(["any", "budget", "moderate", "premium"] as const).map((b) => (
+                    <button
+                      key={b}
+                      onClick={() => setMaxBudget(b)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                        maxBudget === b
+                          ? "bg-[#6F1830] border-[#6F1830] text-white"
+                          : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
+                      }`}
+                      aria-pressed={maxBudget === b}
+                    >
+                      {b === "any" ? "Any Budget" : b === "budget" ? "₹ Budget" : b === "moderate" ? "₹₹ Moderate" : "₹₹₹ Premium"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </FormSection>
 
@@ -437,14 +811,14 @@ function PlannerForm({
       <button
         onClick={onGenerate}
         disabled={isGenerating}
-        className="btn btn-primary w-full py-4 text-base"
+        className="btn btn-primary w-full py-4 text-base shadow-lg hover:shadow-xl transition-all"
         aria-live="polite"
         aria-label="Generate personalized itinerary"
       >
         {isGenerating ? (
           <>
-            <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-            Building your itinerary…
+            <div className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+            Optimizing your Puja route…
           </>
         ) : (
           <>
@@ -454,16 +828,33 @@ function PlannerForm({
         )}
       </button>
 
-      <p className="text-xs text-[#7a6465] text-center">
-        Travel times are estimates. Festival conditions may differ.
+      <p className="text-xs text-[#7a6465] text-center leading-relaxed">
+        Engine applies deterministic 2-opt tour routing to eliminate unnecessary backtracking.
+        Estimates incorporate festive crowd buffers.
       </p>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────
-// Itinerary View
+// Itinerary View Component
 // ─────────────────────────────────────────────
+
+interface ItineraryViewProps {
+  itinerary: GeneratedItinerary;
+  selectedStopId?: string;
+  setSelectedStopId: (id?: string) => void;
+  showMap: boolean;
+  setShowMap: (v: boolean) => void;
+  onRemoveStop: (id: string) => void;
+  onMoveUp: (i: number) => void;
+  onMoveDown: (i: number) => void;
+  onToggleLock: (id: string) => void;
+  onReport: (placeId: string, placeName: string) => void;
+  onRegenerate: () => void;
+  onSave: () => void;
+  onShare: () => void;
+}
 
 function ItineraryView({
   itinerary,
@@ -475,47 +866,42 @@ function ItineraryView({
   onMoveUp,
   onMoveDown,
   onToggleLock,
+  onReport,
   onRegenerate,
   onSave,
   onShare,
-}: {
-  itinerary: GeneratedItinerary;
-  selectedStopId?: string;
-  setSelectedStopId: (id?: string) => void;
-  showMap: boolean;
-  setShowMap: (v: boolean) => void;
-  onRemoveStop: (id: string) => void;
-  onMoveUp: (i: number) => void;
-  onMoveDown: (i: number) => void;
-  onToggleLock: (id: string) => void;
-  onRegenerate: () => void;
-  onSave: () => void;
-  onShare: () => void;
-}) {
+}: ItineraryViewProps) {
   return (
     <div className="space-y-6">
       {/* Actions bar */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h2 className="font-display text-xl text-[#211A1B]">
-          Your Pujo Route
-        </h2>
+        <div>
+          <h2 className="font-display text-2xl text-[#211A1B]">
+            Your Pujo Route
+          </h2>
+          <p className="text-xs text-[#7a6465]">
+            {itinerary.summary.totalStops} stops · {itinerary.summary.estimatedTotalMinutes} min total journey
+          </p>
+        </div>
         <div className="flex items-center gap-2">
-          <button onClick={onRegenerate} className="btn btn-secondary text-sm py-2 px-4">
+          <button onClick={onRegenerate} className="btn btn-secondary text-xs py-2 px-3.5">
             <RefreshCw size={14} />
-            Adjust
+            Adjust Prefs
           </button>
           <button
             onClick={() => setShowMap(!showMap)}
-            className="btn btn-secondary text-sm py-2 px-4"
+            className="btn btn-secondary text-xs py-2 px-3.5"
             aria-pressed={showMap}
           >
             {showMap ? "Hide Map" : "Show Map"}
           </button>
-          <button onClick={onSave} className="btn btn-secondary text-sm py-2 px-4" aria-label="Save plan">
+          <button onClick={onSave} className="btn btn-secondary text-xs py-2 px-3.5" aria-label="Save plan to device">
             <Bookmark size={14} />
+            Save
           </button>
-          <button onClick={onShare} className="btn btn-secondary text-sm py-2 px-4" aria-label="Share plan">
+          <button onClick={onShare} className="btn btn-secondary text-xs py-2 px-3.5" aria-label="Share plan URL">
             <Share2 size={14} />
+            Share
           </button>
         </div>
       </div>
@@ -525,7 +911,7 @@ function ItineraryView({
 
       {/* Map (lazy loaded) */}
       {showMap && (
-        <div className="h-72 md:h-96 rounded-xl overflow-hidden border border-[rgba(111,24,48,0.15)]">
+        <div className="h-72 md:h-96 rounded-xl overflow-hidden border border-[rgba(111,24,48,0.15)] shadow-inner">
           <InteractiveMap
             stops={itinerary.stops}
             selectedStopId={selectedStopId}
@@ -540,7 +926,6 @@ function ItineraryView({
         <NoPlanEmptyState />
       ) : (
         <div className="space-y-1 relative">
-          {/* Timeline spine */}
           <div className="timeline-line" aria-hidden="true" />
           {itinerary.stops.map((stop, i) => (
             <ItineraryStopCard
@@ -554,6 +939,7 @@ function ItineraryView({
               onMoveUp={onMoveUp}
               onMoveDown={onMoveDown}
               onToggleLock={onToggleLock}
+              onReport={onReport}
             />
           ))}
         </div>
@@ -567,12 +953,14 @@ function ItineraryView({
         </a>
       </div>
 
-      {/* Disclaimer */}
-      <div className="card p-4 bg-[#FFF5E6]">
+      {/* Editorial and Device-Local Notice */}
+      <div className="card p-4 bg-[#FFF5E6] border border-[#D99B32]/30 space-y-1">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8B5000]">
+          <Info size={14} />
+          <span>Real-World Journey Guidance</span>
+        </div>
         <p className="text-xs text-[#7a6465] leading-relaxed">
-          <strong className="text-[#3d3032]">Important:</strong> This itinerary is a recommendation only.
-          Actual journey times during Durga Puja may be significantly longer due to crowds and traffic.
-          Always follow official safety guidance and traffic instructions.
+          Saved itineraries remain stored locally on this device. Walking times between pandals assume festive pedestrian lane diversions enforced by Kolkata Police. Always verify barricades with local volunteers.
         </p>
       </div>
     </div>
@@ -580,7 +968,7 @@ function ItineraryView({
 }
 
 // ─────────────────────────────────────────────
-// Form section wrapper
+// Form Section Wrapper
 // ─────────────────────────────────────────────
 
 function FormSection({
@@ -614,7 +1002,7 @@ function MapLoadingPlaceholder() {
     <div className="h-full flex items-center justify-center bg-[#FFF5E6] rounded-xl">
       <div className="flex flex-col items-center gap-2">
         <div className="w-6 h-6 rounded-full border-2 border-[#6F1830] border-t-transparent animate-spin" />
-        <p className="text-xs text-[#7a6465]">Loading map…</p>
+        <p className="text-xs text-[#7a6465]">Loading interactive festival map…</p>
       </div>
     </div>
   );

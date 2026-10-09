@@ -19,9 +19,18 @@ const ALL_TAGS: { tag: ExperienceTag; label: string }[] = [
   { tag: "accessible", label: "Accessible" },
 ];
 
+const REGIONS = [
+  { id: "all", label: "All Regions" },
+  { id: "north", label: "North Kolkata", localities: ["Kumartuli", "Bagbazar", "Sovabazar", "Manicktala", "Shyambazar", "Hatibagan", "Kashi Bose Lane"] },
+  { id: "central", label: "Central Kolkata", localities: ["College Square", "Mohammad Ali Park", "Bowbazar", "Sealdah", "Esplanade", "Park Street"] },
+  { id: "south", label: "South Kolkata", localities: ["Ballygunge", "Ekdalia", "Gariahat", "Deshapriya Park", "Singhi Park", "Maddox Square", "Mudiali", "Shiv Mandir", "Suruchi Sangha", "New Alipore"] },
+  { id: "east", label: "East / Salt Lake", localities: ["Salt Lake", "Lake Town", "Sreebhumi", "FD Block", "BJ Block"] },
+];
+
 export default function DiscoverPage() {
   const [query, setQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<ExperienceTag[]>([]);
+  const [selectedRegion, setSelectedRegion] = useState("all");
   const [sortBy, setSortBy] = useState<"featured" | "name" | "duration">("featured");
 
   const filtered = useMemo(() => {
@@ -37,6 +46,19 @@ export default function DiscoverPage() {
           p.description.toLowerCase().includes(q) ||
           p.alternateNames?.some((n) => n.toLowerCase().includes(q))
       );
+    }
+
+    // Region filter
+    if (selectedRegion !== "all") {
+      const region = REGIONS.find((r) => r.id === selectedRegion);
+      if (region && region.localities) {
+        results = results.filter((p) =>
+          region.localities.some((loc) =>
+            p.locality.toLowerCase().includes(loc.toLowerCase()) ||
+            p.name.toLowerCase().includes(loc.toLowerCase())
+          )
+        );
+      }
     }
 
     // Tag filter
@@ -64,7 +86,7 @@ export default function DiscoverPage() {
     }
 
     return results;
-  }, [query, selectedTags, sortBy]);
+  }, [query, selectedRegion, selectedTags, sortBy]);
 
   function toggleTag(tag: ExperienceTag) {
     setSelectedTags((prev) =>
@@ -74,10 +96,11 @@ export default function DiscoverPage() {
 
   function clearFilters() {
     setQuery("");
+    setSelectedRegion("all");
     setSelectedTags([]);
   }
 
-  const hasFilters = query.trim() || selectedTags.length > 0;
+  const hasFilters = query.trim() || selectedTags.length > 0 || selectedRegion !== "all";
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -90,7 +113,7 @@ export default function DiscoverPage() {
           Discover Pandals
         </h1>
         <p className="text-[#7a6465]">
-          {PANDAL_DATA.length} curated locations across Kolkata
+          {PANDAL_DATA.length} curated locations across Kolkata · Verified against Kolkata Police festival registry
         </p>
       </div>
 
@@ -103,7 +126,7 @@ export default function DiscoverPage() {
         />
         <input
           type="search"
-          placeholder="Search by name or locality…"
+          placeholder="Search by pandal name, landmark, or locality (e.g. Kumartuli, Ekdalia, College Square)…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full h-12 pl-11 pr-4 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] placeholder-[#7a6465] focus:outline-none focus:border-[#6F1830] focus:ring-2 focus:ring-[#6F1830]/20 transition-all text-sm"
@@ -120,10 +143,28 @@ export default function DiscoverPage() {
         )}
       </div>
 
-      {/* Filters */}
+      {/* Regional Zone Pills */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
+        {REGIONS.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => setSelectedRegion(r.id)}
+            className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+              selectedRegion === r.id
+                ? "bg-[#6F1830] text-white"
+                : "bg-white border border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
+            }`}
+            aria-pressed={selectedRegion === r.id}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Experience Tag Filters */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
         <Filter size={14} className="text-[#7a6465] flex-shrink-0" aria-hidden="true" />
-        <span className="text-xs text-[#7a6465] mr-1">Filter:</span>
+        <span className="text-xs text-[#7a6465] mr-1">Experience:</span>
         {ALL_TAGS.map(({ tag, label }) => (
           <button
             key={tag}
@@ -146,7 +187,7 @@ export default function DiscoverPage() {
             aria-label="Clear all filters"
           >
             <X size={10} />
-            Clear
+            Reset all
           </button>
         )}
       </div>

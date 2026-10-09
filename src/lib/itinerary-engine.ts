@@ -127,6 +127,61 @@ function scorePandal(
 // not a mathematically guaranteed global TSP optimum.
 // ─────────────────────────────────────────────
 
+function calculateTourDistance(
+  tour: PandalPlace[],
+  startLat?: number,
+  startLng?: number
+): number {
+  if (tour.length <= 1) return 0;
+  let total = 0;
+  let curLat = startLat ?? tour[0].latitude;
+  let curLng = startLng ?? tour[0].longitude;
+  for (const stop of tour) {
+    if (curLat != null && curLng != null && stop.latitude != null && stop.longitude != null) {
+      total += haversineDistanceKm(curLat, curLng, stop.latitude, stop.longitude);
+    }
+    curLat = stop.latitude;
+    curLng = stop.longitude;
+  }
+  return total;
+}
+
+function improveTourWith2Opt(
+  initialTour: PandalPlace[],
+  startLat?: number,
+  startLng?: number
+): PandalPlace[] {
+  if (initialTour.length < 4) return initialTour;
+  let bestTour = [...initialTour];
+  let bestDist = calculateTourDistance(bestTour, startLat, startLng);
+  let improved = true;
+  let iterations = 0;
+
+  while (improved && iterations < 30) {
+    improved = false;
+    iterations++;
+    for (let i = 0; i < bestTour.length - 1; i++) {
+      for (let k = i + 1; k < bestTour.length; k++) {
+        // 2-opt swap: reverse slice between i and k
+        const candidate = [
+          ...bestTour.slice(0, i),
+          ...bestTour.slice(i, k + 1).reverse(),
+          ...bestTour.slice(k + 1),
+        ];
+        const newDist = calculateTourDistance(candidate, startLat, startLng);
+        if (newDist < bestDist - 0.05) {
+          bestTour = candidate;
+          bestDist = newDist;
+          improved = true;
+          break;
+        }
+      }
+      if (improved) break;
+    }
+  }
+  return bestTour;
+}
+
 function orderStopsByProximity(
   stops: PandalPlace[],
   startLat?: number,
@@ -166,7 +221,8 @@ function orderStopsByProximity(
     curLng = next.longitude;
   }
 
-  return ordered;
+  // Refine initial nearest-neighbour route with 2-opt backtracking reduction
+  return improveTourWith2Opt(ordered, startLat, startLng);
 }
 
 // ─────────────────────────────────────────────
@@ -326,22 +382,33 @@ export function generateItinerary(
     return a.pandal.id.localeCompare(b.pandal.id);
   });
 
+  // Dynamically configure stop overhead & visit durations based on pacing
+  const pacing = prefs.pacing || "standard";
+  const stopOverhead =
+    pacing === "relaxed" ? 18 : pacing === "packed" ? 6 : STOP_OVERHEAD_MINUTES;
+  const foodDuration =
+    pacing === "relaxed" ? 45 : pacing === "packed" ? 25 : FOOD_VISIT_MINUTES;
+  const targetStops = Math.min(
+    7,
+    Math.max(2, prefs.targetStopCount ?? (pacing === "relaxed" ? 4 : 6))
+  );
+
   // 4. Select stops within remaining time budget
   let remainingMinutes = Math.max(0, availableMinutes - lockedEstimatedMinutes);
 
   const selectedUnlocked: PandalPlace[] = [];
   for (const { pandal } of scored) {
     const needed =
-      pandal.recommendedVisitMinutes + STOP_OVERHEAD_MINUTES + DEFAULT_TRAVEL_MINUTES;
+      pandal.recommendedVisitMinutes + stopOverhead + DEFAULT_TRAVEL_MINUTES;
     if (remainingMinutes >= needed) {
       selectedUnlocked.push(pandal);
       remainingMinutes -= needed;
       pandal.experienceTags.forEach((t) => alreadySelectedTags.add(t));
-      if (selectedUnlocked.length + lockedPandals.length >= 6) break; // Maximum 6 stops
+      if (selectedUnlocked.length + lockedPandals.length >= targetStops) break;
     }
   }
 
-  // 5. Merge locked + selected, order by proximity heuristic
+  // 5. Merge locked + selected, order by proximity heuristic with 2-opt
   const allSelected = [...lockedPandals, ...selectedUnlocked];
   const ordered = orderStopsByProximity(
     allSelected,
@@ -362,6 +429,11 @@ export function generateItinerary(
   // 6. Food stop selection
   const foodHotspot = selectFoodStop(ordered, prefs);
   const includeFoodStop = prefs.includeFood && foodHotspot != null;
+  if (prefs.includeFood && !foodHotspot) {
+    unmetConstraints.push(
+      "Requested food stop could not be matched near your route within specified dietary or budget criteria."
+    );
+  }
   let foodStopInserted = false;
   const foodInsertTargetIndex = Math.max(0, Math.floor(ordered.length / 2) - 1);
 
@@ -389,10 +461,13 @@ export function generateItinerary(
     );
     const travelMins = routingRes.minutes;
     const arrivalTime = addMinutes(currentTime, travelMins);
-    const departureTime = addMinutes(arrivalTime, pandal.recommendedVisitMinutes);
+    const visitMins =
+      pandal.recommendedVisitMinutes +
+      (pacing === "relaxed" ? 10 : pacing === "packed" ? -5 : 0);
+    const departureTime = addMinutes(arrivalTime, visitMins);
 
     totalTravel += travelMins;
-    totalVisit += pandal.recommendedVisitMinutes;
+    totalVisit += visitMins;
 
     const caveats: string[] = [];
     if (pandal.dataConfidence === "demo") {
@@ -403,6 +478,16 @@ export function generateItinerary(
     }
     if (pandal.bestVisitTime) {
       caveats.push(`Best time: ${pandal.bestVisitTime}`);
+    }
+    if (prefs.walkingTolerance === "low" && travelMins > 18) {
+      caveats.push(`Segment is ~${travelMins} mins; an auto-rickshaw or taxi is recommended for low walking tolerance.`);
+    }
+    if (prefs.requiresAccessibility) {
+      if (pandal.accessibilityConfidence === "verified_accessible") {
+        caveats.push("Wheelchair accessible / step-free entrance verified.");
+      } else {
+        caveats.push("Step-free accessibility unverified; bamboo barricades may require assistance.");
+      }
     }
 
     // Recommendation reason
@@ -427,7 +512,7 @@ export function generateItinerary(
       latitude: pandal.latitude,
       longitude: pandal.longitude,
       recommendationReason: reason,
-      estimatedVisitMinutes: pandal.recommendedVisitMinutes,
+      estimatedVisitMinutes: visitMins,
       estimatedTravelMinutesFromPrevious: travelMins,
       routingMethodology: routingRes.methodology,
       navigationUrl: pandal.latitude && pandal.longitude
@@ -462,7 +547,7 @@ export function generateItinerary(
       const foodTravel = foodRouting.minutes;
       const foodArrival = addMinutes(currentTime, foodTravel);
       totalTravel += foodTravel;
-      totalVisit += FOOD_VISIT_MINUTES;
+      totalVisit += foodDuration;
 
       const foodCaveats: string[] = [];
       if (foodHotspot.verificationStatus === "demo") {
@@ -482,7 +567,7 @@ export function generateItinerary(
         latitude: foodHotspot.latitude,
         longitude: foodHotspot.longitude,
         recommendationReason: `Food stop: ${foodHotspot.description.split(".")[0]}.`,
-        estimatedVisitMinutes: FOOD_VISIT_MINUTES,
+        estimatedVisitMinutes: foodDuration,
         estimatedTravelMinutesFromPrevious: foodTravel,
         routingMethodology: foodRouting.methodology,
         navigationUrl: foodHotspot.latitude && foodHotspot.longitude
@@ -496,7 +581,7 @@ export function generateItinerary(
         tags: foodHotspot.foodCategory as any,
       });
 
-      currentTime = addMinutes(foodArrival, FOOD_VISIT_MINUTES);
+      currentTime = addMinutes(foodArrival, foodDuration);
       prevLat = foodHotspot.latitude;
       prevLng = foodHotspot.longitude;
       foodStopInserted = true;
@@ -515,7 +600,7 @@ export function generateItinerary(
     const foodTravel = foodRouting.minutes;
     const foodArrival = addMinutes(currentTime, foodTravel);
     totalTravel += foodTravel;
-    totalVisit += FOOD_VISIT_MINUTES;
+    totalVisit += foodDuration;
 
     itineraryStops.push({
       id: nanoid(),
@@ -527,7 +612,7 @@ export function generateItinerary(
       latitude: foodHotspot.latitude,
       longitude: foodHotspot.longitude,
       recommendationReason: `Food stop: ${foodHotspot.description.split(".")[0]}.`,
-      estimatedVisitMinutes: FOOD_VISIT_MINUTES,
+      estimatedVisitMinutes: foodDuration,
       estimatedTravelMinutesFromPrevious: foodTravel,
       routingMethodology: foodRouting.methodology,
       navigationUrl: foodHotspot.latitude && foodHotspot.longitude

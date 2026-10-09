@@ -129,6 +129,29 @@ export interface FoodHotspot {
 // ITINERARY ENGINE TYPES
 // ─────────────────────────────────────────────
 
+export type WalkingTolerance = "low" | "moderate" | "high";
+export type ItineraryPacing = "relaxed" | "standard" | "packed";
+
+export interface ItineraryPreset {
+  id: string;
+  name: string;
+  nameBengali: string;
+  tagline: string;
+  description: string;
+  iconName: string;
+  preferences: Partial<ItineraryPreferences>;
+}
+
+export interface CommunityReport {
+  id: string;
+  placeId: string;
+  placeName: string;
+  category: "queue_delay" | "crowd_update" | "accessibility" | "stall_moved" | "police_diversion" | "general";
+  notes: string;
+  submittedAt: string;
+  status: "pending_review" | "verified";
+}
+
 export interface ItineraryPreferences {
   startingLocality: string;
   startingLatitude?: number;
@@ -146,6 +169,9 @@ export interface ItineraryPreferences {
   excludedPlaceIds?: string[];
   groupSize?: number;
   requiresAccessibility?: boolean;
+  walkingTolerance?: WalkingTolerance;
+  pacing?: ItineraryPacing;
+  targetStopCount?: number;
 }
 
 export interface ItineraryStop {

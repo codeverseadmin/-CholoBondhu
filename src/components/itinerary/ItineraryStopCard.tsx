@@ -12,6 +12,7 @@ import {
   Utensils,
   AlertCircle,
   AlertTriangle,
+  Flag,
 } from "lucide-react";
 import type { ItineraryStop, GeneratedItinerary } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
@@ -29,6 +30,7 @@ interface StopCardProps {
   onToggleLock?: (stopId: string) => void;
   onMoveUp?: (index: number) => void;
   onMoveDown?: (index: number) => void;
+  onReport?: (placeId: string, placeName: string) => void;
   selected?: boolean;
   onSelect?: (stopId: string) => void;
 }
@@ -41,6 +43,7 @@ export function ItineraryStopCard({
   onToggleLock,
   onMoveUp,
   onMoveDown,
+  onReport,
   selected = false,
   onSelect,
 }: StopCardProps) {
@@ -154,23 +157,40 @@ export function ItineraryStopCard({
           </div>
         )}
 
-        {/* Navigation link */}
-        {stop.latitude && stop.longitude && (
-          <a
-            href={
-              stop.navigationUrl ||
-              `https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1.5 mt-2.5 text-xs font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline min-h-[36px] items-center"
-            aria-label={`Open navigation to ${stop.placeName} in external Maps`}
-          >
-            <Navigation size={12} />
-            Navigate with Maps
-          </a>
-        )}
+        {/* Navigation & Community Feedback Action Row */}
+        <div className="flex items-center justify-between flex-wrap gap-2 mt-2.5 pt-2 border-t border-[rgba(111,24,48,0.06)]">
+          {stop.latitude && stop.longitude ? (
+            <a
+              href={
+                stop.navigationUrl ||
+                `https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline min-h-[36px]"
+              aria-label={`Open navigation to ${stop.placeName} in external Maps`}
+            >
+              <Navigation size={12} />
+              Navigate with Maps
+            </a>
+          ) : <span />}
+
+          {onReport && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReport(stop.placeId, stop.placeName);
+              }}
+              className="inline-flex items-center gap-1 text-[11px] text-[#7a6465] hover:text-[#6F1830] transition-colors py-1 min-h-[36px]"
+              aria-label={`Report ground conditions or delays for ${stop.placeName}`}
+            >
+              <Flag size={11} className="text-[#D99B32]" />
+              Report Ground Update
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Touch-friendly stop action controls */}

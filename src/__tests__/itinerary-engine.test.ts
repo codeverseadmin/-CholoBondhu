@@ -300,3 +300,88 @@ describe("summary calculations", () => {
     expect(result.summary.totalStops).toBe(result.stops.length);
   });
 });
+
+describe("curated presets generation", () => {
+  const { ITINERARY_PRESETS } = require("@/data/presets");
+
+  it("has exactly 7 curated presets", () => {
+    expect(ITINERARY_PRESETS.length).toBe(7);
+  });
+
+  ITINERARY_PRESETS.forEach((preset: any) => {
+    it(`generates a valid plan for preset '${preset.name}'`, () => {
+      const prefs: ItineraryPreferences = {
+        startingLocality: preset.preferences.startingLocality || "Central Kolkata",
+        availableMinutes: preset.preferences.availableMinutes || 240,
+        date: "2026-10-10",
+        startTime: preset.preferences.startTime || "10:00",
+        experienceTags: preset.preferences.experienceTags || ["iconic"],
+        transportMode: preset.preferences.transportMode || "metro_walking",
+        includeFood: preset.preferences.includeFood ?? false,
+        walkingTolerance: preset.preferences.walkingTolerance,
+        pacing: preset.preferences.pacing,
+        targetStopCount: preset.preferences.targetStopCount,
+        requiresAccessibility: preset.preferences.requiresAccessibility,
+        foodCategories: preset.preferences.foodCategories,
+        maxBudget: preset.preferences.maxBudget,
+      };
+
+      const itinerary = generateItinerary(prefs);
+      expect(itinerary).toBeDefined();
+      expect(itinerary.stops.length).toBeGreaterThan(0);
+      expect(itinerary.summary.totalStops).toBe(itinerary.stops.length);
+      // Ensure no duplicate places
+      const placeIds = itinerary.stops.map((s) => s.placeId);
+      expect(new Set(placeIds).size).toBe(placeIds.length);
+    });
+  });
+});
+
+describe("advanced personalization dimensions", () => {
+  it("allocates longer duration per stop under relaxed pacing vs packed pacing", () => {
+    const relaxed = generateItinerary({
+      ...BASE_PREFS,
+      pacing: "relaxed",
+      availableMinutes: 300,
+    });
+    const packed = generateItinerary({
+      ...BASE_PREFS,
+      pacing: "packed",
+      availableMinutes: 300,
+    });
+
+    const relaxedAvg =
+      relaxed.summary.estimatedVisitMinutes / Math.max(1, relaxed.stops.length);
+    const packedAvg =
+      packed.summary.estimatedVisitMinutes / Math.max(1, packed.stops.length);
+
+    expect(relaxedAvg).toBeGreaterThan(packedAvg);
+  });
+
+  it("attaches accessibility notes when requiresAccessibility is true", () => {
+    const result = generateItinerary({
+      ...BASE_PREFS,
+      requiresAccessibility: true,
+      availableMinutes: 240,
+    });
+
+    const pandalStops = result.stops.filter((s) => s.placeType === "pandal");
+    pandalStops.forEach((stop) => {
+      expect(stop.caveats).toBeDefined();
+      const hasAccessibilityNotice = stop.caveats?.some(
+        (c) => c.toLowerCase().includes("wheelchair") || c.toLowerCase().includes("step-free")
+      );
+      expect(hasAccessibilityNotice).toBe(true);
+    });
+  });
+
+  it("respects targetStopCount upper bound", () => {
+    const target = 3;
+    const result = generateItinerary({
+      ...BASE_PREFS,
+      targetStopCount: target,
+      availableMinutes: 480, // plenty of time
+    });
+    expect(result.stops.length).toBeLessThanOrEqual(target + 1); // allow optional food stop
+  });
+});

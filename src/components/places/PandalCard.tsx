@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Clock, MapPin, Users, Camera, Star, Accessibility } from "lucide-react";
+import { Clock, MapPin, Users, Camera, Star, Accessibility, Navigation } from "lucide-react";
 import type { PandalPlace, ExperienceTag } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { cn } from "@/lib/utils";
@@ -206,11 +206,32 @@ export function PandalCard({
           )}
         </div>
 
-        {/* Crowd level */}
+        {/* Crowd level with honest historical disclaimer */}
         {pandal.crowdLevel && pandal.crowdLevel !== "unknown" && (
-          <div className="flex items-center gap-1.5 mb-3">
-            <span className="text-xs text-[#7a6465]">Crowds:</span>
-            <CrowdIndicator level={pandal.crowdLevel} />
+          <div className="flex items-center justify-between gap-1.5 mb-3 bg-[#FFF5E6]/60 px-2.5 py-1.5 rounded-lg border border-[#D99B32]/20">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-[#7a6465]">Peak Rush:</span>
+              <CrowdIndicator level={pandal.crowdLevel} />
+            </div>
+            <span className="text-[10px] text-[#7a6465]/80 italic">
+              Historical evening avg
+            </span>
+          </div>
+        )}
+
+        {/* Directions link */}
+        {pandal.latitude && pandal.longitude && (
+          <div className="mb-3">
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${pandal.latitude},${pandal.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline"
+              aria-label={`Open directions to ${pandal.name} in external Maps`}
+            >
+              <Navigation size={12} />
+              Open Directions in Maps
+            </a>
           </div>
         )}
 
