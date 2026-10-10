@@ -25,6 +25,13 @@
   --color-night: #17141a;
   --color-night-soft: #201c24;
 
+  /* Brand Handoff Spec Aliases */
+  --color-brand: #6f1830;
+  --color-accent: #e74732;
+  --color-canvas: #fff5e6;
+  --color-surface: #fffcf7;
+  --color-soft-rose: #e8d1c9;
+
   /* Semantic Tokens */
   --bg-primary: var(--color-ivory-warm);
   --bg-surface: #ffffff;
@@ -180,6 +187,7 @@ h4, h5, h6 {
   background-clip: text;
 }
 
+@layer components {
 /* Card base */
 .card {
   background: var(--bg-surface);
@@ -300,6 +308,7 @@ h4, h5, h6 {
 .badge-maroon {
   background: rgba(111, 24, 48, 0.1);
   color: var(--color-maroon);
+}
 }
 
 /* ─────────────────────────────────────────────

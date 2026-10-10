@@ -88,6 +88,7 @@ export interface PandalPlace {
   editorialRating?: number; // 1–5
   dataConfidence: DataConfidence;
   featured?: boolean;
+  googlePlaceId?: string;
   crowdLevel?: "low" | "moderate" | "high" | "very_high" | "unknown";
   bestVisitTime?: string;
 }

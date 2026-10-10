@@ -296,5 +296,123 @@ export class HeuristicRoutingProvider implements RoutingProvider {
   }
 }
 
+/**
+ * Google Routes Platform Provider
+ * Supports Google Routes API v2 with field masks and graceful fallback
+ */
+export class GoogleRoutesProvider implements RoutingProvider {
+  name = "Google Routes Platform";
+  methodology = "Google Routes API v2 verified";
+  isEstimated = false;
+  private apiKey: string;
+  private fallback = new HeuristicRoutingProvider();
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  estimateTravel(
+    fromLat?: number,
+    fromLng?: number,
+    toLat?: number,
+    toLng?: number,
+    mode: TransportMode = "walking"
+  ): RoutingResult {
+    return this.fallback.estimateTravel(fromLat, fromLng, toLat, toLng, mode);
+  }
+
+  async calculateRoute(
+    origin: Coordinates,
+    destination: Coordinates,
+    mode: TransportMode = "walking"
+  ): Promise<RouteEstimate> {
+    if (!this.apiKey) {
+      return this.fallback.calculateRoute(origin, destination, mode);
+    }
+
+    const travelPreference =
+      mode === "walking" ? "WALK" : mode === "taxi" ? "DRIVE" : "TRANSIT";
+
+    try {
+      const endpoint = "https://routes.googleapis.com/directions/v2:computeRoutes";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": this.apiKey,
+          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+        },
+        body: JSON.stringify({
+          origin: {
+            location: {
+              latLng: { latitude: origin.latitude, longitude: origin.longitude },
+            },
+          },
+          destination: {
+            location: {
+              latLng: { latitude: destination.latitude, longitude: destination.longitude },
+            },
+          },
+          travelMode: travelPreference,
+          computeAlternativeRoutes: false,
+        }),
+      });
+
+      if (!res.ok) {
+        return this.fallback.calculateRoute(origin, destination, mode);
+      }
+
+      const json = await res.json();
+      const route = json.routes?.[0];
+      if (!route || !route.duration) {
+        return this.fallback.calculateRoute(origin, destination, mode);
+      }
+
+      const durationSeconds = parseInt(route.duration.replace("s", ""), 10) || 0;
+      const travelMinutes = Math.max(1, Math.round(durationSeconds / 60));
+      const distanceKm = Number(((route.distanceMeters || 0) / 1000).toFixed(2));
+
+      return {
+        origin,
+        destination,
+        distanceKm,
+        travelMinutes,
+        methodology: "Google Routes API verified",
+        isEstimated: false,
+      };
+    } catch {
+      return this.fallback.calculateRoute(origin, destination, mode);
+    }
+  }
+
+  async calculateMatrix(
+    origins: Coordinates[],
+    destinations: Coordinates[],
+    mode: TransportMode = "walking"
+  ): Promise<RouteEstimate[][]> {
+    const matrix: RouteEstimate[][] = [];
+    for (const origin of origins) {
+      const row: RouteEstimate[] = [];
+      for (const dest of destinations) {
+        row.push(await this.calculateRoute(origin, dest, mode));
+      }
+      matrix.push(row);
+    }
+    return matrix;
+  }
+}
+
 /** Active default routing provider */
 export const defaultRoutingProvider = new HeuristicRoutingProvider();
+
+/**
+ * Factory to retrieve the active routing provider
+ */
+export function getRoutingProvider(): RoutingProvider {
+  const serverKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+  if (serverKey && serverKey.trim().length > 10) {
+    return new GoogleRoutesProvider(serverKey.trim());
+  }
+  return defaultRoutingProvider;
+}
+

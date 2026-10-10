@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface BrandLogoProps {
@@ -8,6 +9,8 @@ interface BrandLogoProps {
   size?: "sm" | "md" | "lg";
   onDark?: boolean;
   className?: string;
+  priority?: boolean;
+  href?: string;
 }
 
 export function BrandLogo({
@@ -15,81 +18,84 @@ export function BrandLogo({
   size = "md",
   onDark = false,
   className,
+  priority = true,
+  href = "/",
 }: BrandLogoProps) {
-  const iconSize = size === "sm" ? 28 : size === "md" ? 36 : 48;
+  // Dimensions calibrated for navigation and display
+  const iconDimension = size === "sm" ? 32 : size === "md" ? 44 : 64;
   const textColor = onDark ? "text-white" : "text-[#6F1830]";
-  const subColor = onDark ? "text-white/70" : "text-[#211A1B]/60";
+  const subColor = onDark ? "text-white/80" : "text-[#211A1B]/70";
 
-  return (
-    <Link
-      href="/"
-      className={cn("inline-flex items-center gap-2.5 focus-visible:outline-none", className)}
-      aria-label="Cholo Bondhu — Home"
-    >
-      {/* Icon mark */}
+  const content = (
+    <>
+      {/* Official App Icon Mark */}
       {variant !== "wordmark" && (
         <div
-          className="flex-shrink-0 relative"
-          style={{ width: iconSize, height: iconSize }}
-          aria-hidden="true"
+          className="relative flex-shrink-0 flex items-center justify-center"
+          style={{ width: iconDimension, height: iconDimension }}
         >
-          <svg
-            viewBox="0 0 48 48"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            width={iconSize}
-            height={iconSize}
-          >
-            {/* Outer circle — festival lamp shape */}
-            <circle
-              cx="24"
-              cy="24"
-              r="22"
-              fill={onDark ? "rgba(255,255,255,0.15)" : "#6F1830"}
-            />
-            {/* Location pin body */}
-            <path
-              d="M24 8C18.477 8 14 12.477 14 18C14 24.5 24 38 24 38C24 38 34 24.5 34 18C34 12.477 29.523 8 24 8Z"
-              fill={onDark ? "white" : "#FFF5E6"}
-            />
-            {/* Inner dot — shiuli flower */}
-            <circle cx="24" cy="18" r="4" fill={onDark ? "#E74732" : "#6F1830"} />
-            {/* Gold accent line at bottom */}
-            <path
-              d="M17 40 Q24 37 31 40"
-              stroke={onDark ? "#D99B32" : "#D99B32"}
-              strokeWidth="2"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </svg>
+          <Image
+            src="/brand/app-icon-512.png"
+            alt={variant === "icon" ? "Cholo Bondhu" : ""}
+            width={iconDimension}
+            height={iconDimension}
+            priority={priority}
+            className={cn(
+              "rounded-xl object-contain shadow-xs transition-transform duration-200",
+              onDark
+                ? "ring-1 ring-white/15"
+                : "ring-1 ring-[rgba(111,24,48,0.12)]"
+            )}
+          />
         </div>
       )}
 
-      {/* Text mark */}
+      {/* Typography Wordmark */}
       {variant !== "icon" && (
-        <div className="leading-tight">
-          <div
+        <div className="leading-tight flex flex-col justify-center">
+          <span
             className={cn(
               "font-display font-bold tracking-tight",
-              size === "sm" ? "text-lg" : size === "md" ? "text-xl" : "text-2xl",
+              size === "sm" ? "text-lg leading-tight" : size === "md" ? "text-xl leading-tight" : "text-2xl leading-snug",
               textColor
             )}
           >
             Cholo Bondhu
-          </div>
+          </span>
           {size !== "sm" && (
-            <div
-              className={cn(
-                "font-bengali text-xs mt-0.5",
-                subColor
-              )}
+            <span
+              className={cn("font-bengali text-xs tracking-normal mt-0.5", subColor)}
+              lang="bn"
             >
               চলো বন্ধু
-            </div>
+            </span>
           )}
         </div>
       )}
+    </>
+  );
+
+  if (!href) {
+    return (
+      <div
+        className={cn("inline-flex items-center gap-2.5", className)}
+        aria-label="Cholo Bondhu"
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D99B32] rounded-lg transition-opacity hover:opacity-95",
+        className
+      )}
+      aria-label="Cholo Bondhu — Home"
+    >
+      {content}
     </Link>
   );
 }

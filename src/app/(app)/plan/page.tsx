@@ -39,6 +39,8 @@ import type {
 } from "@/types";
 import {
   generateItinerary,
+  generateItineraryWithDiagnostics,
+  type PlanningDiagnostics,
   removeStop,
   reorderStop,
   toggleLockStop,
@@ -46,6 +48,7 @@ import {
 import { savePlan, getShareableUrl, getPlanById, decodeSharedItinerary } from "@/lib/saved-plans";
 import { PANDAL_DATA } from "@/data/pandals";
 import { ITINERARY_PRESETS } from "@/data/presets";
+import { KOLKATA_LOCALITIES, resolveLocalityCoordinates } from "@/data/localities";
 import { ItineraryStopCard, RouteSummary } from "@/components/itinerary/ItineraryStopCard";
 import { ReportFeedbackModal } from "@/components/ui/ReportFeedbackModal";
 import { NoPlanEmptyState } from "@/components/ui/EmptyState";
@@ -60,14 +63,7 @@ const InteractiveMap = dynamic(
 // Constants
 // ─────────────────────────────────────────────
 
-const LOCALITIES = [
-  "Shyambazar / Kumartuli (North)",
-  "Central Kolkata (Park Street / Esplanade)",
-  "South Kolkata (Ballygunge / Ekdalia)",
-  "New Alipore / Alipore",
-  "Lake Town / Deshapriya Park",
-  "Naktala / Behala",
-];
+const LOCALITIES = KOLKATA_LOCALITIES.map((l) => l.name);
 
 const TIME_OPTIONS = [
   { value: 120, label: "2 hours" },
@@ -155,6 +151,7 @@ function PlanPageInner() {
 
   // Itinerary state
   const [itinerary, setItinerary] = useState<GeneratedItinerary | null>(null);
+  const [diagnostics, setDiagnostics] = useState<PlanningDiagnostics | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [showMap, setShowMap] = useState(false);
@@ -245,8 +242,11 @@ function PlanPageInner() {
 
   function handleGenerate() {
     setIsGenerating(true);
+    const coords = resolveLocalityCoordinates(locality);
     const prefs: ItineraryPreferences = {
       startingLocality: locality,
+      startingLatitude: coords.latitude,
+      startingLongitude: coords.longitude,
       availableMinutes,
       date: new Date().toISOString().split("T")[0],
       startTime,
@@ -262,11 +262,12 @@ function PlanPageInner() {
     };
 
     setTimeout(() => {
-      const result = generateItinerary(prefs);
-      setItinerary(result);
+      const result = generateItineraryWithDiagnostics(prefs);
+      setItinerary(result.itinerary);
+      setDiagnostics(result.diagnostics);
       setIsGenerating(false);
       setView("itinerary");
-    }, 700);
+    }, 600);
   }
 
   function handleRemoveStop(stopId: string) {
@@ -381,6 +382,7 @@ function PlanPageInner() {
         itinerary && (
           <ItineraryView
             itinerary={itinerary}
+            diagnostics={diagnostics}
             selectedStopId={selectedStopId}
             setSelectedStopId={setSelectedStopId}
             showMap={showMap}
@@ -842,6 +844,7 @@ function PlannerForm({
 
 interface ItineraryViewProps {
   itinerary: GeneratedItinerary;
+  diagnostics?: PlanningDiagnostics | null;
   selectedStopId?: string;
   setSelectedStopId: (id?: string) => void;
   showMap: boolean;
@@ -856,8 +859,80 @@ interface ItineraryViewProps {
   onShare: () => void;
 }
 
+function PersonalizationInsightsCard({ diagnostics }: { diagnostics: PlanningDiagnostics }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="card p-4 bg-[#FFF5E6] border border-[#6F1830]/20 space-y-2.5">
+      <div
+        className="flex items-center justify-between cursor-pointer select-none"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-full bg-[#6F1830] text-white flex items-center justify-center text-[10px] font-bold">
+            ✓
+          </div>
+          <span className="font-semibold text-xs text-[#211A1B] uppercase tracking-wider">
+            Route Personalization Diagnostics
+          </span>
+        </div>
+        <button
+          type="button"
+          className="text-xs text-[#6F1830] font-medium flex items-center gap-1 hover:underline"
+        >
+          {expanded ? "Hide Details" : "Inspect Influences"}
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-center">
+        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
+          <div className="text-[10px] text-[#7a6465] uppercase">Origin Anchor</div>
+          <div className="text-xs font-bold text-[#6F1830] truncate" title={`${diagnostics.resolvedOrigin.latitude}, ${diagnostics.resolvedOrigin.longitude}`}>
+            {diagnostics.resolvedOrigin.latitude.toFixed(3)}, {diagnostics.resolvedOrigin.longitude.toFixed(3)}
+          </div>
+        </div>
+        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
+          <div className="text-[10px] text-[#7a6465] uppercase">Candidates Scored</div>
+          <div className="text-xs font-bold text-[#6F1830]">
+            {diagnostics.candidatesScored} venues
+          </div>
+        </div>
+        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
+          <div className="text-[10px] text-[#7a6465] uppercase">Routing Engine</div>
+          <div className="text-xs font-bold text-[#6F1830] truncate" title={diagnostics.routingProviderUsed}>
+            {diagnostics.routingProviderUsed.includes("Google") ? "Google Routes API" : "Urban Heuristic (1.6x)"}
+          </div>
+        </div>
+        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
+          <div className="text-[10px] text-[#7a6465] uppercase">Food Detour</div>
+          <div className="text-xs font-bold text-[#6F1830] truncate" title={diagnostics.foodHotspotSelected || "None"}>
+            {diagnostics.foodIncluded ? diagnostics.foodHotspotSelected || "Included" : "None"}
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="pt-2 border-t border-[rgba(111,24,48,0.12)] space-y-1.5">
+          <div className="text-[11px] font-semibold text-[#3d3032]">
+            Preferences that shaped this route:
+          </div>
+          <ul className="space-y-1 text-xs text-[#523d40]">
+            {diagnostics.preferenceInfluences.map((inf, idx) => (
+              <li key={idx} className="flex items-start gap-1.5">
+                <span className="text-[#6F1830] font-bold">•</span>
+                <span>{inf}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ItineraryView({
   itinerary,
+  diagnostics,
   selectedStopId,
   setSelectedStopId,
   showMap,
@@ -908,6 +983,9 @@ function ItineraryView({
 
       {/* Route summary */}
       <RouteSummary itinerary={itinerary} />
+
+      {/* Personalization Diagnostics */}
+      {diagnostics && <PersonalizationInsightsCard diagnostics={diagnostics} />}
 
       {/* Map (lazy loaded) */}
       {showMap && (

@@ -4,9 +4,12 @@ import Link from "next/link";
 export default function AboutPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
-      {/* Logo */}
-      <div className="flex justify-center mb-8">
+      {/* Brand Artwork Presentation */}
+      <div className="flex flex-col items-center justify-center mb-6 gap-3">
         <BrandLogo size="lg" />
+        <span className="text-xs uppercase tracking-widest text-[#6F1830]/70 font-semibold">
+          Official Brand Identity
+        </span>
       </div>
 
       {/* Bengali accent */}
@@ -81,10 +84,10 @@ export default function AboutPage() {
 
         <div className="card p-6">
           <h2 className="font-display text-xl text-[#211A1B] mb-3">
-            The team
+            About the Project
           </h2>
           <p>
-            An original experience by <strong>CODEVERSE</strong>.
+            Made for Kolkata&apos;s Pujo.
           </p>
           <p className="mt-2 text-sm text-[#7a6465]">
             Cholo Bondhu is not affiliated with any Durga Puja committee, government

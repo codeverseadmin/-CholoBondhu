@@ -245,9 +245,10 @@ export default function HomePage() {
             Festival schedules and access conditions may change.
             Always follow official safety instructions.
           </p>
-          <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-white/30 text-xs">
-              An original experience by <strong className="text-white/50">CODEVERSE</strong>
+          <div className="mt-8 pt-6 border-t border-white/10 flex flex-col items-center gap-3">
+            <BrandLogo onDark size="sm" />
+            <p className="text-white/40 text-xs">
+              Made for Kolkata&apos;s Pujo.
             </p>
           </div>
         </div>
