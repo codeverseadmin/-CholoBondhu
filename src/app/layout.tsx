@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -77,7 +78,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

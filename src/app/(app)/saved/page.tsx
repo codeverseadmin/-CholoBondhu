@@ -1,25 +1,92 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Bookmark, Trash2, ArrowRight, Calendar, Edit2, Check, X } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import {
+  Bookmark,
+  Trash2,
+  ArrowRight,
+  Calendar,
+  Edit2,
+  Check,
+  X,
+  Cloud,
+  CloudCheck,
+  RefreshCw,
+  LogIn,
+  AlertCircle,
+} from "lucide-react";
 import type { SavedPlan } from "@/types";
-import { getSavedPlans, deletePlan, renamePlan } from "@/lib/saved-plans";
+import { getSavedPlans, deletePlan as deleteLocalPlan, renamePlan as renameLocalPlan } from "@/lib/saved-plans";
 import { NoPlanEmptyState } from "@/components/ui/EmptyState";
 import { formatDuration } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function SavedPage() {
+  const { user, isLoading: authLoading } = useAuth();
+
   const [plans, setPlans] = useState<SavedPlan[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
 
-  useEffect(() => {
-    setPlans(getSavedPlans());
-    setLoaded(true);
-  }, []);
+  const loadPlans = useCallback(async () => {
+    setSyncError(null);
+    if (user) {
+      // Authenticated: load from authoritative server endpoint
+      try {
+        setIsSyncing(true);
+        const res = await fetch("/api/plans");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.plans)) {
+            // Map server records to SavedPlan shape
+            const mapped: SavedPlan[] = data.plans.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              savedAt: p.savedAt,
+              version: p.version || 1,
+              itinerary: p.itinerary,
+            }));
+            setPlans(mapped);
+          }
+        } else {
+          setSyncError("Could not load cloud plans. Showing local backup if available.");
+          setPlans(getSavedPlans());
+        }
+      } catch {
+        setSyncError("Network error while connecting to cloud.");
+        setPlans(getSavedPlans());
+      } finally {
+        setIsSyncing(false);
+        setLoaded(true);
+      }
+    } else {
+      // Guest: load local plans from browser storage
+      setPlans(getSavedPlans());
+      setLoaded(true);
+    }
+  }, [user]);
 
-  function handleDelete(id: string) {
-    deletePlan(id);
+  useEffect(() => {
+    if (!authLoading) {
+      loadPlans();
+    }
+  }, [user, authLoading, loadPlans]);
+
+  async function handleDelete(id: string) {
+    if (user) {
+      // Authenticated: delete from server
+      try {
+        await fetch(`/api/plans/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("Failed to delete plan on server:", err);
+      }
+    }
+    // Also remove from local storage to keep state clean
+    deleteLocalPlan(id);
     setPlans((prev) => prev.filter((p) => p.id !== id));
   }
 
@@ -28,13 +95,36 @@ export default function SavedPage() {
     setEditName(plan.name);
   }
 
-  function handleSaveRename(id: string) {
-    if (editName.trim()) {
-      const updated = renamePlan(id, editName.trim());
-      if (updated) {
-        setPlans((prev) => prev.map((p) => (p.id === id ? updated : p)));
+  async function handleSaveRename(id: string) {
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setEditingId(null);
+      return;
+    }
+
+    if (user) {
+      const plan = plans.find((p) => p.id === id);
+      if (plan) {
+        try {
+          await fetch("/api/plans", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id,
+              name: trimmed,
+              itinerary: plan.itinerary,
+            }),
+          });
+        } catch (err) {
+          console.warn("Failed to update plan name on server:", err);
+        }
       }
     }
+
+    renameLocalPlan(id, trimmed);
+    setPlans((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, name: trimmed } : p))
+    );
     setEditingId(null);
   }
 
@@ -44,14 +134,70 @@ export default function SavedPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <p className="text-[#D99B32] text-sm font-semibold uppercase tracking-widest mb-1">
-          Your Plans
-        </p>
-        <h1 className="font-display text-3xl md:text-4xl text-[#211A1B]">
-          Saved Itineraries
-        </h1>
+      {/* Header */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <p className="text-[#D99B32] text-sm font-semibold uppercase tracking-widest mb-1">
+            Your Plans
+          </p>
+          <h1 className="font-display text-3xl md:text-4xl text-[#211A1B]">
+            Saved Itineraries
+          </h1>
+        </div>
+
+        {user && (
+          <button
+            onClick={loadPlans}
+            disabled={isSyncing}
+            className="btn btn-secondary text-xs py-2 px-3 self-start sm:self-auto flex items-center gap-1.5"
+            title="Refresh from cloud database"
+          >
+            <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
+            Sync Cloud
+          </button>
+        )}
       </div>
+
+      {/* Cloud Sync Status Banner */}
+      {user ? (
+        <div className="mb-6 p-3.5 bg-green-50/70 border border-green-200/80 rounded-xl flex items-center justify-between gap-3 text-xs text-green-800">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse flex-shrink-0" />
+            <span className="truncate">
+              Synchronized with account (+91 ••••• ••{user.phone.slice(-3)})
+            </span>
+          </div>
+          <span className="font-semibold text-green-700 text-[11px] flex-shrink-0">
+            Cross-Device Active
+          </span>
+        </div>
+      ) : (
+        <div className="mb-6 p-4 bg-[#FFF5E6] border border-[#D99B32]/30 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#211A1B]">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <Cloud size={18} className="text-[#D99B32] flex-shrink-0 mt-0.5 sm:mt-0" />
+            <div>
+              <p className="font-semibold">Access your itineraries across all your devices</p>
+              <p className="text-[11px] text-[#7a6465]">
+                Sign in with your mobile number to safely back up and sync your plans.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/login?redirect=/saved"
+            className="btn btn-primary text-xs py-2 px-3.5 flex items-center justify-center gap-1.5 flex-shrink-0"
+          >
+            <LogIn size={13} />
+            Sign In / Register
+          </Link>
+        </div>
+      )}
+
+      {syncError && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-800">
+          <AlertCircle size={15} className="text-amber-600 flex-shrink-0" />
+          <span>{syncError}</span>
+        </div>
+      )}
 
       {!loaded ? (
         <div className="space-y-3">
@@ -129,8 +275,8 @@ export default function SavedPage() {
                       </span>
                     </div>
                     <span>
-                      {plan.itinerary.summary.totalStops} stops ·{" "}
-                      {formatDuration(plan.itinerary.summary.estimatedTotalMinutes)}
+                      {plan.itinerary?.summary?.totalStops || 0} stops ·{" "}
+                      {formatDuration(plan.itinerary?.summary?.estimatedTotalMinutes || 0)}
                     </span>
                   </div>
                 </div>
@@ -160,7 +306,9 @@ export default function SavedPage() {
       )}
 
       <p className="text-xs text-[#7a6465] mt-8 text-center">
-        Plans are saved locally on this browser. No account required.
+        {user
+          ? "Authoritative copies are safely secured in your Cholo Bondhu account."
+          : "Plans are saved locally on this browser. Create an account to sync across devices."}
       </p>
     </div>
   );
