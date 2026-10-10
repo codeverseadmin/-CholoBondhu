@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { DesktopNavigation } from "@/components/navigation/Navigation";
+import { SosButton } from "@/components/navigation/SosButton";
 
 interface AppHeaderProps {
   onDark?: boolean;
@@ -23,12 +24,15 @@ export function AppHeader({ onDark = false, transparent = false }: AppHeaderProp
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <BrandLogo size="sm" onDark={onDark} />
         <DesktopNavigation />
-        <Link
-          href="/plan"
-          className="hidden md:inline-flex btn btn-primary text-sm py-2 px-5"
-        >
-          Plan My Pujo
-        </Link>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <SosButton compact />
+          <Link
+            href="/plan"
+            className="hidden md:inline-flex btn btn-primary text-sm py-2 px-5"
+          >
+            Plan My Pujo
+          </Link>
+        </div>
       </div>
     </header>
   );

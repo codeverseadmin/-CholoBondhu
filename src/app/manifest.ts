@@ -35,5 +35,14 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "any",
       },
     ],
+    shortcuts: [
+      {
+        name: "Emergency SOS",
+        short_name: "SOS",
+        description: "Emergency assistance and official 112 helpline",
+        url: "/sos",
+        icons: [{ src: "/favicon-32.png", sizes: "32x32" }],
+      },
+    ],
   };
 }

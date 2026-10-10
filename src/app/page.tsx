@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { MobileNavigation } from "@/components/navigation/Navigation";
 import { DesktopNavigation } from "@/components/navigation/Navigation";
+import { SosButton } from "@/components/navigation/SosButton";
 import { PandalCard } from "@/components/places/PandalCard";
 import { getFeaturedPandals } from "@/data/pandals";
 import {
@@ -28,9 +29,12 @@ export default function HomePage() {
         <header className="relative z-10 max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <BrandLogo onDark size="md" />
           <DesktopNavigation />
-          <Link href="/plan" className="hidden md:inline-flex btn btn-gold text-sm">
-            Plan My Pujo
-          </Link>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <SosButton compact />
+            <Link href="/plan" className="hidden md:inline-flex btn btn-gold text-sm">
+              Plan My Pujo
+            </Link>
+          </div>
         </header>
 
         {/* Decorative circles (alpana-inspired) */}
