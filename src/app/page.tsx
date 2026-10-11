@@ -4,7 +4,8 @@ import { MobileNavigation } from "@/components/navigation/Navigation";
 import { DesktopNavigation } from "@/components/navigation/Navigation";
 import { SosButton } from "@/components/navigation/SosButton";
 import { PandalCard } from "@/components/places/PandalCard";
-import { getFeaturedPandals } from "@/data/pandals";
+import { PANDAL_DATA, getFeaturedPandals, getPandalStats } from "@/data/pandals";
+import type { PandalPlace } from "@/types";
 import {
   ArrowRight,
   Compass,
@@ -13,10 +14,30 @@ import {
   MapPin,
   Users,
   Clock,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function HomePage() {
-  const featured = getFeaturedPandals().slice(0, 3);
+  const stats = getPandalStats();
+
+  // Pick 6 prominent standouts representing North, Central, South, and East Kolkata
+  const standoutSlugs = [
+    "bagbazar-sarbojanin",
+    "kumartuli-park",
+    "santosh-mitra-square",
+    "ekdalia-evergreen",
+    "sreebhumi-sporting",
+    "suruchi-sangha",
+  ];
+
+  const featured: PandalPlace[] = standoutSlugs
+    .map((slug) => PANDAL_DATA.find((p) => p.slug === slug))
+    .filter((p): p is PandalPlace => Boolean(p));
+
+  // Fallback to generic featured if any missing
+  const finalFeatured = featured.length >= 4 ? featured : getFeaturedPandals().slice(0, 6);
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -88,8 +109,8 @@ export default function HomePage() {
             </h1>
 
             <p className="text-white/75 text-lg md:text-xl mb-8 max-w-xl leading-relaxed">
-              Discover Kolkata&apos;s Durga Puja. Build a personalized route.
-              Find the best food along the way.
+              Discover Kolkata&apos;s Durga Puja with curated pandal themes, reliable walking routes,
+              and iconic food spots — built entirely independent of paid map APIs.
             </p>
 
             {/* CTA buttons */}
@@ -107,7 +128,7 @@ export default function HomePage() {
                 className="btn text-base px-8 py-3.5 bg-white/15 text-white border-white/25 border hover:bg-white/25"
               >
                 <Compass size={18} />
-                Explore Pandals
+                Explore {stats.total} Pandals
               </Link>
             </div>
           </div>
@@ -121,6 +142,51 @@ export default function HomePage() {
           }}
           aria-hidden="true"
         />
+      </section>
+
+      {/* ─── 2026 LAUNCH METRICS & TRUST BAR ────────── */}
+      <section className="bg-[#FAF5EE] border-y border-[rgba(111,24,48,0.1)] py-5 px-4">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[rgba(111,24,48,0.08)] shadow-xs">
+            <div className="w-10 h-10 rounded-lg bg-[#6F1830]/10 text-[#6F1830] flex items-center justify-center font-bold text-base flex-shrink-0">
+              {stats.total}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[#211A1B] truncate">Kolkata Pandals</p>
+              <p className="text-[11px] text-[#7a6465] truncate">{stats.zonesCount} City Zones Indexed</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[rgba(111,24,48,0.08)] shadow-xs">
+            <div className="w-10 h-10 rounded-lg bg-[#D99B32]/15 text-[#D99B32] flex items-center justify-center font-bold text-base flex-shrink-0">
+              <Sparkles size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[#211A1B] truncate">2026 Themes</p>
+              <p className="text-[11px] text-[#7a6465] truncate">{stats.themed} Reported & Verified</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[rgba(111,24,48,0.08)] shadow-xs">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-base flex-shrink-0">
+              <ShieldCheck size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[#211A1B] truncate">Map-Independent</p>
+              <p className="text-[11px] text-[#7a6465] truncate">Zero API Key Requirement</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-[rgba(111,24,48,0.08)] shadow-xs">
+            <div className="w-10 h-10 rounded-lg bg-[#6F1830]/10 text-[#6F1830] flex items-center justify-center font-bold text-base flex-shrink-0">
+              <Utensils size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[#211A1B] truncate">Iconic Food Trails</p>
+              <p className="text-[11px] text-[#7a6465] truncate">Bengali Mishti & Street Food</p>
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ─── WHAT WE DO ─────────────────────────────── */}
@@ -143,18 +209,18 @@ export default function HomePage() {
           <FeatureCard
             icon={<Compass size={28} />}
             title="Discover Pandals"
-            description="Browse curated pandals across Kolkata — from iconic to artistic, traditional to contemporary. Find the ones that match what you love."
+            description="Browse curated pandals across North, South, Central, and East Kolkata — with transparent verification badges for 2026 themes and photographic galleries."
           />
           <FeatureCard
             icon={<Route size={28} />}
             title="Personalized Route"
-            description="Tell us your time, your starting point, and your preferences. We build a feasible, ordered itinerary — not just a list."
+            description="Tell us your time, your starting point, and your preferences. We build an optimized, walkable itinerary — completely offline and free of API keys."
             highlighted
           />
           <FeatureCard
             icon={<Utensils size={28} />}
             title="Food Along the Way"
-            description="From biryani to phuchka, mishti to Hakka noodles — discover the best food spots that fit naturally into your Puja plan."
+            description="From legendary biryani to phuchka, kathi rolls to heritage sweet shops — discover authentic Kolkata food stops synchronized with your route."
           />
         </div>
       </section>
@@ -175,13 +241,13 @@ export default function HomePage() {
               href="/discover"
               className="btn btn-secondary text-sm hidden sm:inline-flex"
             >
-              View All
+              View All {stats.total} Pandals
               <ArrowRight size={15} />
             </Link>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featured.map((pandal) => (
+            {finalFeatured.map((pandal) => (
               <PandalCard
                 key={pandal.id}
                 pandal={pandal}
@@ -192,7 +258,7 @@ export default function HomePage() {
 
           <div className="text-center mt-6 sm:hidden">
             <Link href="/discover" className="btn btn-secondary">
-              View All Pandals
+              View All {stats.total} Pandals
             </Link>
           </div>
         </div>
@@ -233,7 +299,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── TRUST SECTION ─────────────────────────────── */}
+      {/* ─── TRUST & DISCLAIMER SECTION ──────────────── */}
       <section className="bg-[#211A1B] py-14">
         <div className="max-w-2xl mx-auto px-4 text-center">
           <p className="font-bengali text-[#D99B32] text-lg mb-4" lang="bn">
@@ -244,15 +310,15 @@ export default function HomePage() {
             finding a pandal you would otherwise miss, discovering a new food spot,
             and turning a day around Kolkata into a memory worth keeping.
           </p>
-          <p className="text-white/40 text-sm">
-            Itinerary suggestions are recommendations, not guarantees.
-            Festival schedules and access conditions may change.
-            Always follow official safety instructions.
+          <p className="text-white/40 text-xs sm:text-sm">
+            Itinerary suggestions are algorithmic recommendations. Reported themes and queue conditions
+            are based on curated field research and community updates. Access conditions may change during peak puja days.
+            Always follow official Kolkata Police and local festival administration directions.
           </p>
           <div className="mt-8 pt-6 border-t border-white/10 flex flex-col items-center gap-3">
             <BrandLogo onDark size="sm" />
             <p className="text-white/40 text-xs">
-              Made for Kolkata&apos;s Pujo.
+              Made with ❤️ for Kolkata&apos;s Durga Puja.
             </p>
           </div>
         </div>

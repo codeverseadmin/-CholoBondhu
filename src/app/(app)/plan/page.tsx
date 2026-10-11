@@ -47,6 +47,7 @@ import {
 } from "@/lib/itinerary-engine";
 import { savePlan, getShareableUrl, getPlanById, decodeSharedItinerary } from "@/lib/saved-plans";
 import { PANDAL_DATA } from "@/data/pandals";
+import { isRoutablePandal } from "@/lib/pandal-validator";
 import { ITINERARY_PRESETS } from "@/data/presets";
 import { KOLKATA_LOCALITIES, resolveLocalityCoordinates } from "@/data/localities";
 import { ItineraryStopCard, RouteSummary } from "@/components/itinerary/ItineraryStopCard";
@@ -159,6 +160,7 @@ function PlanPageInner() {
   const [showMap, setShowMap] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState<"saved" | "shared" | null>(null);
   const [reportingPlace, setReportingPlace] = useState<{ placeId: string; placeName: string } | null>(null);
+  const [advisoryNotice, setAdvisoryNotice] = useState<{ type: "info" | "warning"; message: string } | null>(null);
 
   // View mode: "form" | "itinerary"
   const [view, setView] = useState<"form" | "itinerary">("form");
@@ -190,6 +192,18 @@ function PlanPageInner() {
     if (addPandalId) {
       const pandal = PANDAL_DATA.find((p) => p.id === addPandalId || p.slug === addPandalId);
       if (pandal) {
+        if (!isRoutablePandal(pandal)) {
+          // Candidate record lacking verified turn-by-turn coordinates
+          setAdvisoryNotice({
+            type: "warning",
+            message: `"${pandal.name}" is a candidate directory record (${pandal.locality}) awaiting field GPS coordinates and cannot be locked into automated turn-by-turn routing yet. We've set your starting area to ${pandal.locality} so you can plan routable pandals in this neighbourhood!`,
+          });
+          const matched = LOCALITIES.find((l) => l.toLowerCase().includes(pandal.locality.toLowerCase())) || pandal.locality;
+          setLocality(matched);
+          setView("form");
+          return;
+        }
+
         const prefs: ItineraryPreferences = {
           startingLocality: pandal.locality,
           availableMinutes: 240,
@@ -358,6 +372,22 @@ function PlanPageInner() {
           placeId={reportingPlace.placeId}
           placeName={reportingPlace.placeName}
         />
+      )}
+
+      {/* Candidate Record / Routing Advisory Notice */}
+      {advisoryNotice && (
+        <div className="mb-6 p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 flex items-start justify-between gap-3 animate-fade-in-up shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <Info className="flex-shrink-0 text-amber-600 mt-0.5" size={18} />
+            <p className="text-xs sm:text-sm leading-relaxed">{advisoryNotice.message}</p>
+          </div>
+          <button
+            onClick={() => setAdvisoryNotice(null)}
+            className="text-amber-800 hover:text-amber-950 text-xs font-semibold px-2 py-1 rounded hover:bg-amber-100 flex-shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
       )}
 
       {view === "form" ? (

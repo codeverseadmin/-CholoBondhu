@@ -10,6 +10,8 @@ import type { Coordinates, TransportMode } from "@/types";
 export interface RoutingResult {
   minutes: number;
   distanceKm?: number;
+  straightLineDistanceKm?: number;
+  estimatedRoadDistanceKm?: number;
   methodology: "provider_verified" | "urban_heuristic" | "fallback_default";
   isEstimated: boolean;
   attribution?: string;
@@ -252,6 +254,8 @@ export class HeuristicRoutingProvider implements RoutingProvider {
     return {
       minutes: roundedMinutes,
       distanceKm: Number(estimatedRoadKm.toFixed(2)),
+      straightLineDistanceKm: Number(straightLineKm.toFixed(2)),
+      estimatedRoadDistanceKm: Number(estimatedRoadKm.toFixed(2)),
       methodology: "urban_heuristic",
       isEstimated: true,
       notes,
@@ -415,4 +419,13 @@ export function getRoutingProvider(): RoutingProvider {
   }
   return defaultRoutingProvider;
 }
+
+// Re-export external navigation link utilities
+export {
+  buildSingleDestinationNavUrl,
+  buildMultiStopNavUrl,
+  buildLegNavUrl,
+  type NavigationTarget,
+  type MultiStopNavResult,
+} from "./navigation-links";
 

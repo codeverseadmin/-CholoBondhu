@@ -13,10 +13,12 @@ import {
   AlertCircle,
   AlertTriangle,
   Flag,
+  ExternalLink,
 } from "lucide-react";
 import type { ItineraryStop, GeneratedItinerary } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { formatTime, formatDuration } from "@/lib/utils";
+import { buildMultiStopNavUrl } from "@/lib/navigation-links";
 
 // ─────────────────────────────────────────────
 // Single Stop Card
@@ -128,9 +130,14 @@ export function ItineraryStopCard({
 
         {/* Travel time from previous */}
         {stop.estimatedTravelMinutesFromPrevious != null && index > 0 && (
-          <div className="text-xs text-[#7a6465] mb-2 bg-[#FFF5E6]/60 px-2.5 py-1 rounded-md flex items-center justify-between">
+          <div className="text-xs text-[#7a6465] mb-2 bg-[#FFF5E6]/60 px-2.5 py-1.5 rounded-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <span>
               ~{stop.estimatedTravelMinutesFromPrevious} min transit from previous stop
+              {stop.straightLineDistanceKmFromPrevious != null && (
+                <span className="text-[10px] text-[#7a6465] block sm:inline sm:ml-1">
+                  (~{stop.straightLineDistanceKmFromPrevious} km straight · ~{stop.estimatedRoadDistanceKmFromPrevious} km road)
+                </span>
+              )}
             </span>
             <span className="text-[10px] text-[#7a6465]/80 italic">
               {stop.routingMethodology === "urban_heuristic"
@@ -253,11 +260,33 @@ interface RouteSummaryProps {
 }
 
 export function RouteSummary({ itinerary }: RouteSummaryProps) {
-  const { summary, preferences } = itinerary;
+  const { summary, preferences, stops } = itinerary;
+
+  const validNavStops = stops
+    .filter((s) => typeof s.latitude === "number" && typeof s.longitude === "number")
+    .map((s) => ({
+      latitude: s.latitude!,
+      longitude: s.longitude!,
+      name: s.placeName,
+    }));
+
+  const multiStopNav =
+    validNavStops.length > 0
+      ? buildMultiStopNavUrl(
+          validNavStops,
+          preferences.startingLatitude && preferences.startingLongitude
+            ? {
+                latitude: preferences.startingLatitude,
+                longitude: preferences.startingLongitude,
+              }
+            : undefined,
+          preferences.transportMode
+        )
+      : null;
 
   return (
     <div className="card p-4 space-y-3">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
         <SummaryCell
           label="Stops"
           value={String(summary.totalStops)}
@@ -273,7 +302,38 @@ export function RouteSummary({ itinerary }: RouteSummaryProps) {
           value={formatDuration(summary.estimatedTravelMinutes)}
           sub="between stops"
         />
+        {summary.totalEstimatedRoadDistanceKm != null && (
+          <SummaryCell
+            label="Distance"
+            value={`~${summary.totalEstimatedRoadDistanceKm} km`}
+            sub={summary.totalStraightLineDistanceKm != null ? `~${summary.totalStraightLineDistanceKm} km straight` : "est. road"}
+          />
+        )}
       </div>
+
+      {multiStopNav && (
+        <div className="pt-2 border-t border-[rgba(111,24,48,0.1)] flex items-center justify-between flex-wrap gap-2">
+          <a
+            href={multiStopNav.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary text-xs py-2 px-3 inline-flex items-center gap-1.5 text-[#6F1830] font-semibold hover:bg-[#FFF5E6]"
+            aria-label="Open multi-stop route directions in external Google Maps"
+          >
+            <Navigation size={13} />
+            Open Full Route in External Google Maps <ExternalLink size={11} />
+          </a>
+          <span className="text-[11px] text-[#7a6465]">
+            Opens Google Maps with {multiStopNav.waypointsIncluded + 2} stops
+          </span>
+        </div>
+      )}
+
+      {summary.approximationExplanation && (
+        <p className="text-[11px] text-[#7a6465] leading-relaxed italic bg-[#FFF5E6]/50 p-2 rounded-lg border border-[rgba(111,24,48,0.06)]">
+          ℹ {summary.approximationExplanation}
+        </p>
+      )}
 
       {summary.approximateEndTime && (
         <div className="flex items-center justify-between text-sm border-t border-[rgba(111,24,48,0.1)] pt-3">

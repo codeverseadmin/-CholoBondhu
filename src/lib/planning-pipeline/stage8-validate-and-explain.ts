@@ -140,6 +140,9 @@ export function validateAndExplainResult(
   let prevLng: number | undefined = input.startingCoordinates.longitude;
   let totalTravelMinutes = 0;
   let totalVisitMinutes = 0;
+  let totalStraightDistanceKm = 0;
+  let totalRoadDistanceKm = 0;
+  const seenPlaceIds = new Set<string>();
 
   let foodInserted = false;
 
@@ -163,8 +166,12 @@ export function validateAndExplainResult(
       );
       const foodTravel = foodRouting.minutes;
       const foodArrival = addMinutes(currentTime, foodTravel);
+      const foodStraight = foodRouting.straightLineDistanceKm ?? 0;
+      const foodRoad = foodRouting.estimatedRoadDistanceKm ?? 0;
       totalTravelMinutes += foodTravel;
       totalVisitMinutes += foodDuration;
+      totalStraightDistanceKm += foodStraight;
+      totalRoadDistanceKm += foodRoad;
 
       const foodCaveats: string[] = [];
       if (foodHotspot.verificationStatus === "demo") {
@@ -174,6 +181,7 @@ export function validateAndExplainResult(
         foodCaveats.push(`Detour travel to this food stop is ~${foodTravel} mins.`);
       }
 
+      seenPlaceIds.add(foodHotspot.id);
       itineraryStops.push({
         id: nanoid(),
         placeId: foodHotspot.id,
@@ -186,6 +194,8 @@ export function validateAndExplainResult(
         recommendationReason: `Food stop: ${foodHotspot.description.split(".")[0]}.`,
         estimatedVisitMinutes: foodDuration,
         estimatedTravelMinutesFromPrevious: foodTravel,
+        straightLineDistanceKmFromPrevious: foodStraight,
+        estimatedRoadDistanceKmFromPrevious: foodRoad,
         routingMethodology: foodRouting.methodology,
         navigationUrl:
           foodHotspot.latitude && foodHotspot.longitude
@@ -211,6 +221,12 @@ export function validateAndExplainResult(
       foodInserted = true;
     }
 
+    // Deduplicate against already added stops
+    if (seenPlaceIds.has(pandal.id)) {
+      continue;
+    }
+    seenPlaceIds.add(pandal.id);
+
     // Now process the pandal stop
     const routingRes = safeEstimateTravel(
       routingProvider,
@@ -224,9 +240,13 @@ export function validateAndExplainResult(
     const arrivalTime = addMinutes(currentTime, travelMins);
     const visitMins = Math.max(15, pandal.recommendedVisitMinutes + visitDelta);
     const departureTime = addMinutes(arrivalTime, visitMins);
+    const pandalStraight = routingRes.straightLineDistanceKm ?? 0;
+    const pandalRoad = routingRes.estimatedRoadDistanceKm ?? 0;
 
     totalTravelMinutes += travelMins;
     totalVisitMinutes += visitMins;
+    totalStraightDistanceKm += pandalStraight;
+    totalRoadDistanceKm += pandalRoad;
 
     const caveats: string[] = [];
     if (pandal.dataConfidence === "demo") {
@@ -280,6 +300,8 @@ export function validateAndExplainResult(
       recommendationReason: reason,
       estimatedVisitMinutes: visitMins,
       estimatedTravelMinutesFromPrevious: travelMins,
+      straightLineDistanceKmFromPrevious: pandalStraight,
+      estimatedRoadDistanceKmFromPrevious: pandalRoad,
       routingMethodology: routingRes.methodology,
       navigationUrl:
         pandal.latitude && pandal.longitude
@@ -374,11 +396,17 @@ export function validateAndExplainResult(
     estimatedTotalMinutes: totalMinutes,
     estimatedTravelMinutes: totalTravelMinutes,
     estimatedVisitMinutes: totalVisitMinutes,
+    totalStraightLineDistanceKm: Number(totalStraightDistanceKm.toFixed(2)),
+    totalEstimatedRoadDistanceKm: Number(totalRoadDistanceKm.toFixed(2)),
     approximateEndTime: currentTime,
     routingMethodology: routingProvider.name.includes("Google")
       ? "provider_verified"
       : "urban_heuristic",
     isEstimated: true,
+    isApproximate: true,
+    approximationExplanation: routingProvider.name.includes("Google")
+      ? "Routes verified via external provider; timings reflect baseline conditions."
+      : "Distances and travel times use defensible urban heuristics (1.6x street network expansion factor) calibrated for Kolkata festival movement. Real-world times will vary with pedestrian queue density and local police traffic diversions.",
     warnings,
     unmetConstraints,
     dataConfidence: computeConfidence(itineraryStops),

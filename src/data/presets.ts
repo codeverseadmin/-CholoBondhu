@@ -148,4 +148,43 @@ export const ITINERARY_PRESETS: ItineraryPreset[] = [
       includeFood: false,
     },
   },
+  {
+    id: "saltlake-spectacle",
+    name: "Salt Lake & Lake Town Spectacle",
+    nameBengali: "সল্টলেক ও লেক টাউনের বর্ণাঢ্য পুজো",
+    tagline: "Sreebhumi, FD Block & grand illuminations",
+    description:
+      "Witness colossal pandal architecture, themed royal citadels, and radiant Chandannagar lighting spectacles along North-East Kolkata and Salt Lake corridors.",
+    iconName: "Landmark",
+    preferences: {
+      startingLocality: "Salt Lake / Lake Town / Dum Dum Park (East)",
+      availableMinutes: 240,
+      transportMode: "metro_walking",
+      experienceTags: ["iconic", "artistic", "photography"],
+      pacing: "standard",
+      targetStopCount: 4,
+      walkingTolerance: "moderate",
+      includeFood: false,
+    },
+  },
+  {
+    id: "south-traditional-adda",
+    name: "Classic South Kolkata Adda & Heritage",
+    nameBengali: "দক্ষিণ কলকাতার বনেদি ও সাবেকি আড্ডা",
+    tagline: "Maddox Square, Mudiali & parkland cultural adda",
+    description:
+      "Immerse yourself in South Kolkata's festive adda culture across Bhowanipore, Ballygunge, and Kalighat. Features open-air park lawns, heritage idols, and musical ambiance.",
+    iconName: "Users",
+    preferences: {
+      startingLocality: "Bhowanipore / Maddox Square (South)",
+      availableMinutes: 210,
+      transportMode: "walking",
+      experienceTags: ["traditional", "group_outing", "heritage"],
+      pacing: "relaxed",
+      targetStopCount: 3,
+      walkingTolerance: "moderate",
+      includeFood: true,
+      foodCategories: ["street_food", "rolls_kathi", "sweets"],
+    },
+  },
 ];

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Clock, MapPin, Users, Camera, Star, Accessibility, Navigation } from "lucide-react";
+import { Clock, MapPin, Users, Camera, Star, Accessibility, Navigation, ExternalLink } from "lucide-react";
 import type { PandalPlace, ExperienceTag } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
+import { isRoutablePandal } from "@/lib/pandal-validator";
 import { cn } from "@/lib/utils";
 
 const TAG_LABELS: Record<ExperienceTag, string> = {
@@ -219,39 +220,108 @@ export function PandalCard({
           </div>
         )}
 
-        {/* Directions link */}
-        {pandal.latitude && pandal.longitude && (
-          <div className="mb-3">
+        {/* 2026 Reported Theme Block */}
+        {pandal.theme2026 && (
+          <div className="mb-3 p-2.5 rounded-lg bg-[#FFF5E6] border border-[#D99B32]/30">
+            <div className="flex items-center justify-between gap-1 mb-1">
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#8B5000]">
+                2026 Theme
+              </span>
+              <ThemeStatusBadge status={pandal.themeStatus} />
+            </div>
+            <p className="text-xs font-semibold text-[#211A1B] leading-snug">
+              {pandal.theme2026}
+            </p>
+            {pandal.themeBengali2026 && (
+              <p className="font-bengali text-xs text-[#7a6465] mt-0.5">
+                {pandal.themeBengali2026}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Reported Nearest Metro */}
+        {pandal.nearestMetroReported && (
+          <div className="text-[11px] text-[#7a6465] mb-2 flex items-center gap-1">
+            <span className="font-medium text-[#211A1B]">Reported Metro:</span>
+            <span>{pandal.nearestMetroReported}</span>
+          </div>
+        )}
+
+        {/* Photo Gallery Source Link (Requirement 5 & 6: Link only, no hotlinking) */}
+        {pandal.photoGalleryPage && (
+          <div className="mb-3 text-xs bg-stone-50 p-2 rounded-lg border border-stone-200/70">
             <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${pandal.latitude},${pandal.longitude}`}
+              href={pandal.photoGalleryPage}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline"
-              aria-label={`Open directions to ${pandal.name} in external Maps`}
+              className="inline-flex items-center gap-1 text-[#6F1830] font-semibold hover:underline"
+              aria-label={`View photo gallery source page for ${pandal.name}`}
             >
-              <Navigation size={12} />
-              Open Directions in Maps
+              <ExternalLink size={12} />
+              <span>View Photo Gallery Source</span>
             </a>
+            <p className="text-[10px] text-[#7a6465] mt-1 leading-tight italic">
+              {pandal.photoUsageNote || "External source gallery page. Do not copy or redistribute photographs without permission."}
+            </p>
+          </div>
+        )}
+
+        {/* Location & Routing Status (Requirement 7, 8, 12) */}
+        {isRoutablePandal(pandal) ? (
+          pandal.latitude && pandal.longitude && (
+            <div className="mb-3">
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${pandal.latitude},${pandal.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline"
+                aria-label={`Open directions to ${pandal.name} in external Maps`}
+              >
+                <Navigation size={12} />
+                Open Directions in Maps
+              </a>
+            </div>
+          )
+        ) : (
+          <div className="mb-3 p-2 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-1.5">
+            <MapPin size={13} className="text-amber-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">
+                {pandal.coordinatesStatus === "needs_verified_geocoding"
+                  ? "Location coordinates pending field geocoding."
+                  : "Reported coordinates require field verification."}
+              </p>
+              <p className="text-[10px] text-amber-800/90 mt-0.5">
+                Available in list search. Turn-by-turn routing excluded until coordinates are verified.
+              </p>
+            </div>
           </div>
         )}
 
         {/* Actions */}
-        {onAddToItinerary ? (
-          <button
-            onClick={() => onAddToItinerary(pandal)}
-            className="btn btn-primary w-full text-sm"
-            aria-label={`Add ${pandal.name} to your itinerary`}
-          >
-            Add to Itinerary
-          </button>
+        {isRoutablePandal(pandal) ? (
+          onAddToItinerary ? (
+            <button
+              onClick={() => onAddToItinerary(pandal)}
+              className="btn btn-primary w-full text-sm"
+              aria-label={`Add ${pandal.name} to your itinerary`}
+            >
+              Add to Itinerary
+            </button>
+          ) : (
+            <Link
+              href={`/plan?add=${pandal.id}`}
+              className="btn btn-primary w-full text-sm inline-flex items-center justify-center text-center"
+              aria-label={`Plan route with ${pandal.name}`}
+            >
+              Plan with this Pandal
+            </Link>
+          )
         ) : (
-          <Link
-            href={`/plan?add=${pandal.id}`}
-            className="btn btn-primary w-full text-sm inline-flex items-center justify-center text-center"
-            aria-label={`Plan route with ${pandal.name}`}
-          >
-            Plan with this Pandal
-          </Link>
+          <div className="rounded-lg bg-stone-100 p-2 text-center text-xs text-[#7a6465] font-medium border border-stone-200">
+            Available in Directory · Excluded from Route Planning
+          </div>
         )}
       </div>
     </article>
@@ -287,4 +357,38 @@ function CrowdIndicator({
       </span>
     </div>
   );
+}
+
+function ThemeStatusBadge({
+  status,
+}: {
+  status?: "confirmed" | "reported_needs_confirmation" | "reported_needs_verification" | "not_verified";
+}) {
+  switch (status) {
+    case "confirmed":
+      return (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">
+          Confirmed
+        </span>
+      );
+    case "reported_needs_confirmation":
+      return (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">
+          Reported (Awaiting Confirmation)
+        </span>
+      );
+    case "reported_needs_verification":
+      return (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 font-medium">
+          Reported (Needs Verification)
+        </span>
+      );
+    case "not_verified":
+    default:
+      return (
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-medium">
+          Unverified
+        </span>
+      );
+  }
 }

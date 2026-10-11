@@ -304,8 +304,8 @@ describe("summary calculations", () => {
 describe("curated presets generation", () => {
   const { ITINERARY_PRESETS } = require("@/data/presets");
 
-  it("has exactly 7 curated presets", () => {
-    expect(ITINERARY_PRESETS.length).toBe(7);
+  it("has curated presets", () => {
+    expect(ITINERARY_PRESETS.length).toBe(9);
   });
 
   ITINERARY_PRESETS.forEach((preset: any) => {

@@ -83,6 +83,7 @@ function VerifyPhoneForm() {
       if (res.ok && data.success) {
         setCooldown(60);
         setError(null);
+        setSuccessMsg(data.message || "A new verification code has been sent to your phone.");
       } else {
         setError(data.error || "Failed to resend code.");
       }

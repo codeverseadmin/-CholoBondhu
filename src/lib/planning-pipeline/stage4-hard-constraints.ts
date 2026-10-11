@@ -5,6 +5,7 @@
 import type { PandalPlace } from "@/types";
 import type { NormalizedPlannerInput } from "./types";
 import { haversineDistanceKm } from "@/lib/routing-provider";
+import { isRoutablePandal } from "@/lib/pandal-validator";
 
 export interface HardConstraintResult {
   feasibleCandidates: PandalPlace[];
@@ -55,7 +56,21 @@ export function applyHardConstraints(
     );
   }
 
-  // 3. Transport mode maximum feasible radius filter from starting point
+  // 3. Filter routable candidates (must have verified coordinates within Kolkata)
+  const unroutableLocked = lockedPandals.filter((p) => !isRoutablePandal(p));
+  for (const ul of unroutableLocked) {
+    warnings.push(
+      `Locked stop "${ul.name}" was excluded from route planning because its coordinates are pending verified field geocoding.`
+    );
+  }
+  const routableLockedPandals = lockedPandals.filter(isRoutablePandal);
+  const routableUnlocked = unlocked.filter(isRoutablePandal);
+
+  const unroutableExcludedCount =
+    lockedPandals.length - routableLockedPandals.length +
+    (unlocked.length - routableUnlocked.length);
+
+  // 4. Transport mode maximum feasible radius filter from starting point
   // Walking tolerance & transport mode determine the spatial reach
   let maxRadiusKm: number;
   const availableHours = input.availableMinutes / 60;
@@ -91,27 +106,26 @@ export function applyHardConstraints(
   const originLat = input.startingCoordinates.latitude;
   const originLng = input.startingCoordinates.longitude;
 
-  const geographicallyFeasible = unlocked.filter((p) => {
-    if (!p.latitude || !p.longitude) return true; // Keep places with unknown coords if needed
-    const dist = haversineDistanceKm(originLat, originLng, p.latitude, p.longitude);
+  const geographicallyFeasible = routableUnlocked.filter((p) => {
+    const dist = haversineDistanceKm(originLat, originLng, p.latitude!, p.longitude!);
     return dist <= maxRadiusKm;
   });
 
   // If geographic filter was too strict (e.g. fewer than 2 candidates), gracefully expand radius
   let finalUnlocked = geographicallyFeasible;
-  if (geographicallyFeasible.length < 3 && unlocked.length >= 3) {
+  if (geographicallyFeasible.length < 3 && routableUnlocked.length >= 3) {
     advisories.push(
       `Strict ${input.transportMode} radius had limited nearby options. Broadened search zone to ensure a complete itinerary.`
     );
-    finalUnlocked = unlocked;
+    finalUnlocked = routableUnlocked;
   }
 
   return {
-    feasibleCandidates: [...lockedPandals, ...finalUnlocked],
-    lockedPandals,
+    feasibleCandidates: [...routableLockedPandals, ...finalUnlocked],
+    lockedPandals: routableLockedPandals,
     filteredCandidates: finalUnlocked,
     unlockedCandidates: finalUnlocked,
-    excludedCount,
+    excludedCount: excludedCount + unroutableExcludedCount,
     warnings,
     unmetConstraints,
     advisories,

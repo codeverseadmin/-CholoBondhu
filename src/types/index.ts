@@ -53,16 +53,31 @@ export interface PandalPlace {
   id: string;
   slug: string;
   name: string;
+  canonicalName?: string;
   nameBengali?: string;
   alternateNames?: string[];
   description: string;
   editorialNote?: string;
   locality: string;
+  area?: string;
+  neighborhood?: string;
+  zone?: string;
   address?: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
+  coordinatesStatus?:
+    | "verified"
+    | "reported_by_third_party_directory_needs_independent_verification"
+    | "needs_verified_geocoding";
   category: "pandal" | "attraction" | "event_venue";
   theme?: string;
+  theme2026?: string;
+  themeBengali2026?: string;
+  themeStatus?:
+    | "confirmed"
+    | "reported_needs_confirmation"
+    | "reported_needs_verification"
+    | "not_verified";
   traditionTags?: string[];
   experienceTags: ExperienceTag[];
   familyFriendly: boolean;
@@ -70,7 +85,14 @@ export interface PandalPlace {
   recommendedVisitMinutes: number;
   officialWebsite?: string;
   officialSocialLinks?: Record<string, string>;
+  photoGalleryPage?: string;
+  photoUsageNote?: string;
+  nearestMetroReported?: string;
+  sourceIds?: string[];
+  sourceNote?: string;
+  listingStatus?: "canonical_curated" | "candidate_seed_record";
   lastVerifiedAt?: string; // ISO date string
+  lastCheckedDate?: string;
   verificationStatus: VerificationStatus;
   verificationSource?: string;
   seasonalValidity: {
@@ -82,7 +104,7 @@ export interface PandalPlace {
   locationConfidence?: "exact" | "high" | "approximate";
   openingHoursConfidence?: "standard_puja_window" | "verified_24h" | "seasonal_estimate" | "unverified";
   accessibilityConfidence?: "verified_accessible" | "crowd_dependent" | "unverified";
-  dataSource?: "official_committee" | "editorial_curation" | "historical_archive" | "community";
+  dataSource?: "official_committee" | "editorial_curation" | "historical_archive" | "community" | "third_party_directory";
   notes?: string;
   imageReferences?: string[];
   editorialRating?: number; // 1–5
@@ -187,6 +209,8 @@ export interface ItineraryStop {
   recommendationReason: string;
   estimatedVisitMinutes: number;
   estimatedTravelMinutesFromPrevious?: number;
+  straightLineDistanceKmFromPrevious?: number;
+  estimatedRoadDistanceKmFromPrevious?: number;
   routingMethodology?: "provider_verified" | "urban_heuristic" | "fallback_default";
   navigationUrl?: string;
   approximateArrivalTime?: string; // HH:MM
@@ -203,9 +227,13 @@ export interface ItinerarySummary {
   estimatedTotalMinutes: number;
   estimatedTravelMinutes: number;
   estimatedVisitMinutes: number;
+  totalStraightLineDistanceKm?: number;
+  totalEstimatedRoadDistanceKm?: number;
   approximateEndTime?: string; // HH:MM
   routingMethodology?: "provider_verified" | "urban_heuristic" | "fallback_default";
   isEstimated?: boolean;
+  isApproximate?: boolean;
+  approximationExplanation?: string;
   warnings: string[];
   unmetConstraints: string[];
   dataConfidence: DataConfidence;

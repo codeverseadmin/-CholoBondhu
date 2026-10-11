@@ -79,8 +79,10 @@ export function selectAndOptimizeStops(
     if (remainingMinutes >= needed) {
       selectedUnlocked.push(place);
       remainingMinutes -= needed;
-      curLat = place.latitude;
-      curLng = place.longitude;
+      if (place.latitude !== undefined && place.longitude !== undefined) {
+        curLat = place.latitude;
+        curLng = place.longitude;
+      }
     }
   }
 
@@ -149,8 +151,10 @@ export function orderWithNearestNeighbourAnd2Opt(
 
     const next = remaining.splice(bestIdx, 1)[0];
     ordered.push(next);
-    curLat = next.latitude;
-    curLng = next.longitude;
+    if (next.latitude !== undefined && next.longitude !== undefined) {
+      curLat = next.latitude;
+      curLng = next.longitude;
+    }
   }
 
   // 2-opt pairwise improvement

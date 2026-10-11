@@ -9,7 +9,7 @@ import type { UserRecord } from "@/types/auth";
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { phone, password, confirmPassword } = body;
+    const { phone, password, confirmPassword, resendOnly } = body;
 
     // 1. Validate phone number
     const phoneNorm = normalizeIndianPhoneNumber(phone);
@@ -20,7 +20,45 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Validate passwords
+    const repo = getAuthRepository();
+
+    // 2. Handle OTP resend request (from verification screen)
+    if (resendOnly) {
+      const existing = await repo.findUserByPhone(phoneNorm.canonical);
+      if (!existing) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "No pending account found for this mobile number. Please register first.",
+          },
+          { status: 404 }
+        );
+      }
+      if (existing.phoneVerificationStatus === "active") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "This mobile number is already verified. Please sign in.",
+          },
+          { status: 409 }
+        );
+      }
+
+      const otpRes = await sendOtp(phoneNorm.canonical, "registration");
+      if (!otpRes.success) {
+        return NextResponse.json(
+          { success: false, error: otpRes.error || "Failed to resend verification code." },
+          { status: 429 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "A new verification code has been sent to your mobile number.",
+      });
+    }
+
+    // 3. Validate passwords
     if (password !== confirmPassword) {
       return NextResponse.json(
         { success: false, error: "Passwords do not match." },
@@ -36,9 +74,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const repo = getAuthRepository();
-
-    // 3. Check duplicate registration
+    // 4. Check duplicate registration
     const existing = await repo.findUserByPhone(phoneNorm.canonical);
     if (existing) {
       if (existing.phoneVerificationStatus === "active") {
@@ -50,8 +86,21 @@ export async function POST(request: Request) {
           { status: 409 }
         );
       }
-      // If previous registration was unverified, allow resending verification OTP
-      await sendOtp(phoneNorm.canonical, "registration");
+      // If previous registration was unverified, update password and resend verification OTP
+      const passwordHash = await hashPassword(password);
+      await repo.updateUser(existing.id, {
+        passwordHash,
+        updatedAt: new Date().toISOString(),
+      });
+
+      const otpRes = await sendOtp(phoneNorm.canonical, "registration");
+      if (!otpRes.success) {
+        return NextResponse.json(
+          { success: false, error: otpRes.error || "Failed to send verification code." },
+          { status: 429 }
+        );
+      }
+
       return NextResponse.json({
         success: true,
         message: "Verification code sent to your mobile number.",
@@ -59,7 +108,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // 4. Hash password
+    // 5. Hash password and create new user
     const passwordHash = await hashPassword(password);
     const now = new Date().toISOString();
     const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -77,8 +126,14 @@ export async function POST(request: Request) {
 
     await repo.createUser(newUser);
 
-    // 5. Send real verification OTP
-    await sendOtp(phoneNorm.canonical, "registration");
+    // 6. Send real verification OTP
+    const otpRes = await sendOtp(phoneNorm.canonical, "registration");
+    if (!otpRes.success) {
+      return NextResponse.json(
+        { success: false, error: otpRes.error || "Failed to send verification code." },
+        { status: 429 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
