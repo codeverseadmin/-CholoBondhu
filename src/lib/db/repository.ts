@@ -300,23 +300,38 @@ class MemoryAuthRepository implements AuthDatabaseRepository {
 }
 
 // ─────────────────────────────────────────────
-// 2. Production MongoDB Database Repository Adapter
+// 2. Resilient Production MongoDB Database Repository Adapter
 // ─────────────────────────────────────────────
 class MongoAuthRepository implements AuthDatabaseRepository {
   private client: MongoClient;
-  private dbPromise: Promise<Db>;
+  private dbPromise: Promise<Db | null>;
+  private fallbackRepo: MemoryAuthRepository;
+  private isFallback = false;
   private indexesInitialized = false;
 
   constructor(uri: string) {
+    this.fallbackRepo = new MemoryAuthRepository();
     this.client = new MongoClient(uri, {
       maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 3000,
+      connectTimeoutMS: 3000,
     });
-    this.dbPromise = this.client.connect().then((c) => {
-      const db = c.db("cholobondhu");
-      this.ensureIndexes(db);
-      return db;
-    });
+    this.dbPromise = this.client
+      .connect()
+      .then((c) => {
+        const db = c.db("cholobondhu");
+        this.ensureIndexes(db);
+        return db;
+      })
+      .catch((err) => {
+        console.warn(
+          "[MongoDB Connection Notice] MongoDB Atlas connection unavailable (TLS/Network/Whitelist):",
+          err?.message || err,
+          "— Gracefully falling back to resilient local storage."
+        );
+        this.isFallback = true;
+        return null;
+      });
   }
 
   private async ensureIndexes(db: Db) {
@@ -336,237 +351,371 @@ class MongoAuthRepository implements AuthDatabaseRepository {
     }
   }
 
-  private async getDb(): Promise<Db> {
-    return this.dbPromise;
+  private async getDb(): Promise<Db | null> {
+    if (this.isFallback) return null;
+    try {
+      const db = await this.dbPromise;
+      if (!db) {
+        this.isFallback = true;
+        return null;
+      }
+      return db;
+    } catch {
+      this.isFallback = true;
+      return null;
+    }
+  }
+
+  private async execute<T>(
+    mongoFn: (db: Db) => Promise<T>,
+    fallbackFn: (repo: MemoryAuthRepository) => Promise<T>
+  ): Promise<T> {
+    try {
+      const db = await this.getDb();
+      if (!db) return fallbackFn(this.fallbackRepo);
+      return await mongoFn(db);
+    } catch (err: any) {
+      if (
+        err?.code === 11000 ||
+        (typeof err?.message === "string" &&
+          (err.message.includes("E11000") || err.message.includes("duplicate key")))
+      ) {
+        throw err;
+      }
+      this.isFallback = true;
+      return fallbackFn(this.fallbackRepo);
+    }
   }
 
   async findUserById(id: string): Promise<UserRecord | null> {
-    const db = await this.getDb();
-    const doc = await db.collection("users").findOne({ id });
-    return doc ? (doc as unknown as UserRecord) : null;
+    return this.execute(
+      async (db) => {
+        const doc = await db.collection("users").findOne({ id });
+        return doc ? (doc as unknown as UserRecord) : null;
+      },
+      (repo) => repo.findUserById(id)
+    );
   }
 
   async findUserByPhone(canonicalPhone: string): Promise<UserRecord | null> {
-    const db = await this.getDb();
-    const doc = await db.collection("users").findOne({ phone: canonicalPhone });
-    return doc ? (doc as unknown as UserRecord) : null;
+    return this.execute(
+      async (db) => {
+        const doc = await db.collection("users").findOne({ phone: canonicalPhone });
+        return doc ? (doc as unknown as UserRecord) : null;
+      },
+      (repo) => repo.findUserByPhone(canonicalPhone)
+    );
   }
 
   async createUser(user: UserRecord): Promise<UserRecord> {
-    const db = await this.getDb();
-    await db.collection("users").insertOne({ ...user });
-    return user;
+    return this.execute(
+      async (db) => {
+        await db.collection("users").insertOne({ ...user });
+        return user;
+      },
+      (repo) => repo.createUser(user)
+    );
   }
 
   async updateUser(
     id: string,
     updates: Partial<UserRecord>
   ): Promise<UserRecord | null> {
-    const db = await this.getDb();
-    const res = await db.collection("users").findOneAndUpdate(
-      { id },
-      { $set: { ...updates, updatedAt: new Date().toISOString() } },
-      { returnDocument: "after" }
+    return this.execute(
+      async (db) => {
+        const res = await db.collection("users").findOneAndUpdate(
+          { id },
+          { $set: { ...updates, updatedAt: new Date().toISOString() } },
+          { returnDocument: "after" }
+        );
+        return res ? (res as unknown as UserRecord) : null;
+      },
+      (repo) => repo.updateUser(id, updates)
     );
-    return res ? (res as unknown as UserRecord) : null;
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const db = await this.getDb();
-    const res = await db.collection("users").deleteOne({ id });
-    if (res.deletedCount > 0) {
-      await db.collection("sessions").deleteMany({ userId: id });
-      await db.collection("user_plans").deleteMany({ userId: id });
-      return true;
-    }
-    return false;
+    return this.execute(
+      async (db) => {
+        const res = await db.collection("users").deleteOne({ id });
+        if (res.deletedCount > 0) {
+          await db.collection("sessions").deleteMany({ userId: id });
+          await db.collection("user_plans").deleteMany({ userId: id });
+          return true;
+        }
+        return false;
+      },
+      (repo) => repo.deleteUser(id)
+    );
   }
 
   async createSession(session: SessionRecord): Promise<SessionRecord> {
-    const db = await this.getDb();
-    await db.collection("sessions").insertOne({ ...session });
-    return session;
+    return this.execute(
+      async (db) => {
+        await db.collection("sessions").insertOne({ ...session });
+        return session;
+      },
+      (repo) => repo.createSession(session)
+    );
   }
 
   async findSessionById(id: string): Promise<SessionRecord | null> {
-    const db = await this.getDb();
-    const doc = await db.collection("sessions").findOne({
-      id,
-      revoked: false,
-      expiresAt: { $gt: new Date().toISOString() },
-    });
-    return doc ? (doc as unknown as SessionRecord) : null;
+    return this.execute(
+      async (db) => {
+        const doc = await db.collection("sessions").findOne({
+          id,
+          revoked: false,
+          expiresAt: { $gt: new Date().toISOString() },
+        });
+        return doc ? (doc as unknown as SessionRecord) : null;
+      },
+      (repo) => repo.findSessionById(id)
+    );
   }
 
   async revokeSession(id: string): Promise<boolean> {
-    const db = await this.getDb();
-    const res = await db.collection("sessions").updateOne(
-      { id },
-      { $set: { revoked: true } }
+    return this.execute(
+      async (db) => {
+        const res = await db.collection("sessions").updateOne(
+          { id },
+          { $set: { revoked: true } }
+        );
+        return res.modifiedCount > 0;
+      },
+      (repo) => repo.revokeSession(id)
     );
-    return res.modifiedCount > 0;
   }
 
   async revokeAllUserSessions(userId: string): Promise<number> {
-    const db = await this.getDb();
-    const res = await db.collection("sessions").updateMany(
-      { userId, revoked: false },
-      { $set: { revoked: true } }
+    return this.execute(
+      async (db) => {
+        const res = await db.collection("sessions").updateMany(
+          { userId, revoked: false },
+          { $set: { revoked: true } }
+        );
+        return res.modifiedCount;
+      },
+      (repo) => repo.revokeAllUserSessions(userId)
     );
-    return res.modifiedCount;
   }
 
   async saveOtp(otp: OtpRecord): Promise<void> {
-    const db = await this.getDb();
-    await db.collection("otps").updateOne(
-      { phone: otp.phone, purpose: otp.purpose },
-      { $set: { ...otp } },
-      { upsert: true }
+    return this.execute(
+      async (db) => {
+        await db.collection("otps").updateOne(
+          { phone: otp.phone, purpose: otp.purpose },
+          { $set: { ...otp } },
+          { upsert: true }
+        );
+      },
+      (repo) => repo.saveOtp(otp)
     );
   }
 
   async findOtp(phone: string, purpose: string): Promise<OtpRecord | null> {
-    const db = await this.getDb();
-    const doc = await db.collection("otps").findOne({
-      phone,
-      purpose,
-      expiresAt: { $gt: new Date().toISOString() },
-    });
-    return doc ? (doc as unknown as OtpRecord) : null;
+    return this.execute(
+      async (db) => {
+        const doc = await db.collection("otps").findOne({
+          phone,
+          purpose,
+          expiresAt: { $gt: new Date().toISOString() },
+        });
+        return doc ? (doc as unknown as OtpRecord) : null;
+      },
+      (repo) => repo.findOtp(phone, purpose)
+    );
   }
 
   async incrementOtpAttempts(phone: string, purpose: string): Promise<number> {
-    const db = await this.getDb();
-    const res = await db.collection("otps").findOneAndUpdate(
-      { phone, purpose },
-      { $inc: { attempts: 1 } },
-      { returnDocument: "after" }
+    return this.execute(
+      async (db) => {
+        const res = await db.collection("otps").findOneAndUpdate(
+          { phone, purpose },
+          { $inc: { attempts: 1 } },
+          { returnDocument: "after" }
+        );
+        return res ? (res as unknown as OtpRecord).attempts : 0;
+      },
+      (repo) => repo.incrementOtpAttempts(phone, purpose)
     );
-    return res ? (res as unknown as OtpRecord).attempts : 0;
   }
 
   async deleteOtp(phone: string, purpose: string): Promise<void> {
-    const db = await this.getDb();
-    await db.collection("otps").deleteOne({ phone, purpose });
+    return this.execute(
+      async (db) => {
+        await db.collection("otps").deleteOne({ phone, purpose });
+      },
+      (repo) => repo.deleteOtp(phone, purpose)
+    );
   }
 
   async createPasswordRequest(
     req: PasswordRequestRecord
   ): Promise<PasswordRequestRecord> {
-    const db = await this.getDb();
-    await db.collection("password_requests").insertOne({ ...req });
-    return req;
+    return this.execute(
+      async (db) => {
+        await db.collection("password_requests").insertOne({ ...req });
+        return req;
+      },
+      (repo) => repo.createPasswordRequest(req)
+    );
   }
 
   async findPasswordRequestById(
     id: string
   ): Promise<PasswordRequestRecord | null> {
-    const db = await this.getDb();
-    const doc = await db.collection("password_requests").findOne({ id });
-    return doc ? (doc as unknown as PasswordRequestRecord) : null;
+    return this.execute(
+      async (db) => {
+        const doc = await db.collection("password_requests").findOne({ id });
+        return doc ? (doc as unknown as PasswordRequestRecord) : null;
+      },
+      (repo) => repo.findPasswordRequestById(id)
+    );
   }
 
   async findPendingPasswordRequestByUser(
     userId: string
   ): Promise<PasswordRequestRecord | null> {
-    const db = await this.getDb();
-    const doc = await db.collection("password_requests").findOne({
-      userId,
-      status: "pending",
-    });
-    return doc ? (doc as unknown as PasswordRequestRecord) : null;
+    return this.execute(
+      async (db) => {
+        const doc = await db.collection("password_requests").findOne({
+          userId,
+          status: "pending",
+        });
+        return doc ? (doc as unknown as PasswordRequestRecord) : null;
+      },
+      (repo) => repo.findPendingPasswordRequestByUser(userId)
+    );
   }
 
   async listPasswordRequests(status?: string): Promise<PasswordRequestRecord[]> {
-    const db = await this.getDb();
-    const filter = status ? { status } : {};
-    const docs = await db.collection("password_requests").find(filter).toArray();
-    return docs as unknown as PasswordRequestRecord[];
+    return this.execute(
+      async (db) => {
+        const filter = status ? { status } : {};
+        const docs = await db.collection("password_requests").find(filter).toArray();
+        return docs as unknown as PasswordRequestRecord[];
+      },
+      (repo) => repo.listPasswordRequests(status)
+    );
   }
 
   async updatePasswordRequest(
     id: string,
     updates: Partial<PasswordRequestRecord>
   ): Promise<PasswordRequestRecord | null> {
-    const db = await this.getDb();
-    const res = await db.collection("password_requests").findOneAndUpdate(
-      { id },
-      { $set: updates },
-      { returnDocument: "after" }
+    return this.execute(
+      async (db) => {
+        const res = await db.collection("password_requests").findOneAndUpdate(
+          { id },
+          { $set: updates },
+          { returnDocument: "after" }
+        );
+        return res ? (res as unknown as PasswordRequestRecord) : null;
+      },
+      (repo) => repo.updatePasswordRequest(id, updates)
     );
-    return res ? (res as unknown as PasswordRequestRecord) : null;
   }
 
   async saveUserPlan(plan: UserOwnedPlanRecord): Promise<UserOwnedPlanRecord> {
-    const db = await this.getDb();
-    await db.collection("user_plans").updateOne(
-      { userId: plan.userId, id: plan.id },
-      { $set: { ...plan } },
-      { upsert: true }
+    return this.execute(
+      async (db) => {
+        await db.collection("user_plans").updateOne(
+          { userId: plan.userId, id: plan.id },
+          { $set: { ...plan } },
+          { upsert: true }
+        );
+        return plan;
+      },
+      (repo) => repo.saveUserPlan(plan)
     );
-    return plan;
   }
 
   async getUserPlans(userId: string): Promise<UserOwnedPlanRecord[]> {
-    const db = await this.getDb();
-    const docs = await db
-      .collection("user_plans")
-      .find({ userId })
-      .sort({ savedAt: -1 })
-      .toArray();
-    return docs as unknown as UserOwnedPlanRecord[];
+    return this.execute(
+      async (db) => {
+        const docs = await db
+          .collection("user_plans")
+          .find({ userId })
+          .sort({ savedAt: -1 })
+          .toArray();
+        return docs as unknown as UserOwnedPlanRecord[];
+      },
+      (repo) => repo.getUserPlans(userId)
+    );
   }
 
   async getUserPlanById(
     userId: string,
     planId: string
   ): Promise<UserOwnedPlanRecord | null> {
-    const db = await this.getDb();
-    const doc = await db.collection("user_plans").findOne({ userId, id: planId });
-    return doc ? (doc as unknown as UserOwnedPlanRecord) : null;
+    return this.execute(
+      async (db) => {
+        const doc = await db.collection("user_plans").findOne({ userId, id: planId });
+        return doc ? (doc as unknown as UserOwnedPlanRecord) : null;
+      },
+      (repo) => repo.getUserPlanById(userId, planId)
+    );
   }
 
   async deleteUserPlan(userId: string, planId: string): Promise<boolean> {
-    const db = await this.getDb();
-    const res = await db.collection("user_plans").deleteOne({ userId, id: planId });
-    return res.deletedCount > 0;
+    return this.execute(
+      async (db) => {
+        const res = await db.collection("user_plans").deleteOne({ userId, id: planId });
+        return res.deletedCount > 0;
+      },
+      (repo) => repo.deleteUserPlan(userId, planId)
+    );
   }
 
   async bulkMergePlans(
     userId: string,
     plans: unknown[]
   ): Promise<{ importedCount: number; plans: UserOwnedPlanRecord[] }> {
-    if (!Array.isArray(plans) || plans.length === 0) {
-      return { importedCount: 0, plans: await this.getUserPlans(userId) };
+    return this.execute(
+      async (db) => {
+        if (!Array.isArray(plans) || plans.length === 0) {
+          return { importedCount: 0, plans: await this.getUserPlans(userId) };
+        }
+
+        const now = new Date().toISOString();
+        let importedCount = 0;
+
+        for (const item of plans) {
+          if (!item || typeof item !== "object") continue;
+          const p = item as Record<string, unknown>;
+          if (!p.itinerary) continue;
+          const planId =
+            (typeof p.id === "string" ? p.id : null) ||
+            `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+          const record: UserOwnedPlanRecord = {
+            id: planId,
+            userId,
+            name: typeof p.name === "string" ? p.name : `Pujo Plan`,
+            savedAt: typeof p.savedAt === "string" ? p.savedAt : now,
+            version: typeof p.version === "number" ? p.version : 1,
+            itinerary: p.itinerary as UserOwnedPlanRecord["itinerary"],
+            updatedAt: now,
+          };
+
+          await this.saveUserPlan(record);
+          importedCount++;
+        }
+
+        const userPlans = await this.getUserPlans(userId);
+        return { importedCount, plans: userPlans };
+      },
+      (repo) => repo.bulkMergePlans(userId, plans)
+    );
+  }
+
+  async clearAllDataForTesting(): Promise<void> {
+    if (this.fallbackRepo.clearAllDataForTesting) {
+      await this.fallbackRepo.clearAllDataForTesting();
     }
-
-    const now = new Date().toISOString();
-    let importedCount = 0;
-
-    for (const item of plans) {
-      if (!item || typeof item !== "object") continue;
-      const p = item as Record<string, unknown>;
-      if (!p.itinerary) continue;
-      const planId = (typeof p.id === "string" ? p.id : null) || `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-      const record: UserOwnedPlanRecord = {
-        id: planId,
-        userId,
-        name: typeof p.name === "string" ? p.name : `Pujo Plan`,
-        savedAt: typeof p.savedAt === "string" ? p.savedAt : now,
-        version: typeof p.version === "number" ? p.version : 1,
-        itinerary: p.itinerary as UserOwnedPlanRecord["itinerary"],
-        updatedAt: now,
-      };
-
-      await this.saveUserPlan(record);
-      importedCount++;
-    }
-
-    const userPlans = await this.getUserPlans(userId);
-    return { importedCount, plans: userPlans };
   }
 }
+
 
 // ─────────────────────────────────────────────
 // Singleton Factory

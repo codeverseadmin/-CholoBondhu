@@ -155,8 +155,23 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
+    let userErrorMessage = "Registration failed. Please check your connection and try again.";
+    if (typeof err?.message === "string") {
+      if (
+        err.message.includes("SSL") ||
+        err.message.includes("tlsv1") ||
+        err.message.includes("alert number") ||
+        err.message.includes("MongoServerSelectionError") ||
+        err.message.includes("connect ECONNREFUSED")
+      ) {
+        userErrorMessage = "Database service is temporarily unreachable. Please try again in a moment.";
+      } else if (!err.message.includes("error:") && !err.message.includes("at ") && !err.message.includes(".c:")) {
+        userErrorMessage = err.message;
+      }
+    }
+
     return NextResponse.json(
-      { success: false, error: err.message || "Registration failed." },
+      { success: false, error: userErrorMessage },
       { status: 500 }
     );
   }
