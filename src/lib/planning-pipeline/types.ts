@@ -17,9 +17,12 @@ import type {
   DietaryNote,
 } from "@/types";
 
+import type { MetroStationRecord } from "@/data/localities";
+
 export interface NormalizedPlannerInput {
   startingLocality: string;
   startingCoordinates: Coordinates;
+  startingMetroStation?: MetroStationRecord;
   availableMinutes: number;
   date: string;
   startTime: string; // HH:MM

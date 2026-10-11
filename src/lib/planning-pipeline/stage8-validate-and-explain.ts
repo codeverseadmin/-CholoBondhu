@@ -85,9 +85,15 @@ export function validateAndExplainResult(
   const preferenceInfluences: string[] = [];
 
   // Record preference influences
-  preferenceInfluences.push(
-    `Anchored route origin around ${input.startingLocality} (${input.startingCoordinates.latitude.toFixed(4)}, ${input.startingCoordinates.longitude.toFixed(4)})`
-  );
+  if (input.startingMetroStation) {
+    preferenceInfluences.push(
+      `🚇 Journey begins at ${input.startingMetroStation.name} — Exit: ${input.startingMetroStation.gateGuidance}`
+    );
+  } else {
+    preferenceInfluences.push(
+      `Anchored route origin around ${input.startingLocality} (${input.startingCoordinates.latitude.toFixed(4)}, ${input.startingCoordinates.longitude.toFixed(4)})`
+    );
+  }
 
   if (input.experienceTags.length > 0) {
     preferenceInfluences.push(
@@ -136,8 +142,9 @@ export function validateAndExplainResult(
 
   const itineraryStops: ItineraryStop[] = [];
   let currentTime = sanitizeStartTime(input.startTime);
-  let prevLat: number | undefined = input.startingCoordinates.latitude;
-  let prevLng: number | undefined = input.startingCoordinates.longitude;
+  const metroAnchor = input.startingMetroStation?.center;
+  let prevLat: number | undefined = metroAnchor ? metroAnchor.latitude : input.startingCoordinates.latitude;
+  let prevLng: number | undefined = metroAnchor ? metroAnchor.longitude : input.startingCoordinates.longitude;
   let totalTravelMinutes = 0;
   let totalVisitMinutes = 0;
   let totalStraightDistanceKm = 0;
@@ -431,6 +438,8 @@ export function validateAndExplainResult(
     createdAt: new Date().toISOString(),
     preferences: {
       startingLocality: input.startingLocality,
+      startingMetroStationId: input.startingMetroStation?.id,
+      startingMetroStationName: input.startingMetroStation?.name,
       startingLatitude: input.startingCoordinates.latitude,
       startingLongitude: input.startingCoordinates.longitude,
       availableMinutes: input.availableMinutes,
@@ -449,6 +458,18 @@ export function validateAndExplainResult(
       lockedStopIds: input.lockedStopIds,
       excludedPlaceIds: input.excludedPlaceIds,
     },
+    startingMetro: input.startingMetroStation
+      ? {
+          id: input.startingMetroStation.id,
+          name: input.startingMetroStation.name,
+          nameBengali: input.startingMetroStation.nameBengali,
+          line: input.startingMetroStation.line,
+          lineCode: input.startingMetroStation.lineCode,
+          center: input.startingMetroStation.center,
+          gateGuidance: input.startingMetroStation.gateGuidance,
+          popularNearbyPandals: input.startingMetroStation.popularNearbyPandals,
+        }
+      : undefined,
     stops: itineraryStops,
     summary,
     unmetConstraints,

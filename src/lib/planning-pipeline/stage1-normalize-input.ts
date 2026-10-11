@@ -4,7 +4,12 @@
 
 import type { ItineraryPreferences } from "@/types";
 import type { NormalizedPlannerInput } from "./types";
-import { resolveLocalityCoordinates } from "@/data/localities";
+import {
+  resolveLocalityCoordinates,
+  getNearestMetroStation,
+  getMetroStationById,
+  type MetroStationRecord,
+} from "@/data/localities";
 
 export function sanitizeTimeFormat(time?: string): string {
   if (!time || typeof time !== "string") return "10:00";
@@ -32,12 +37,25 @@ export function normalizePlannerInput(
     warnings.push("Short time budget (under 1 hour). Route will be tightly restricted to immediate neighbourhood.");
   }
 
-  // Location resolution
+  // Location & Metro resolution
+  let metroStation: MetroStationRecord | undefined;
+  if (prefs.startingMetroStationId) {
+    metroStation = getMetroStationById(prefs.startingMetroStationId);
+  }
+  if (!metroStation && prefs.startingLocality) {
+    metroStation = getMetroStationById(prefs.startingLocality);
+  }
+
   const coords = resolveLocalityCoordinates(
-    prefs.startingLocality,
+    metroStation ? metroStation.name : prefs.startingLocality,
     prefs.startingLatitude,
     prefs.startingLongitude
   );
+
+  // If still no explicit metro station, automatically find the nearest Kolkata Metro anchor
+  if (!metroStation) {
+    metroStation = getNearestMetroStation(coords.latitude, coords.longitude);
+  }
 
   const startTime = sanitizeTimeFormat(prefs.startTime);
 
@@ -54,8 +72,9 @@ export function normalizePlannerInput(
   }
 
   const normalized: NormalizedPlannerInput = {
-    startingLocality: prefs.startingLocality?.trim() || "Central Kolkata",
+    startingLocality: prefs.startingLocality?.trim() || metroStation.name,
     startingCoordinates: coords,
+    startingMetroStation: metroStation,
     availableMinutes: duration,
     date: prefs.date || new Date().toISOString().split("T")[0],
     startTime,

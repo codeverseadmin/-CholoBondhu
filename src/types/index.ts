@@ -177,6 +177,8 @@ export interface CommunityReport {
 
 export interface ItineraryPreferences {
   startingLocality: string;
+  startingMetroStationId?: string;
+  startingMetroStationName?: string;
   startingLatitude?: number;
   startingLongitude?: number;
   availableMinutes: number;
@@ -220,6 +222,8 @@ export interface ItineraryStop {
   score?: number;
   tags?: ExperienceTag[];
   foodCategories?: FoodCategory[];
+  completed?: boolean;
+  pointsEarned?: number;
 }
 
 export interface ItinerarySummary {
@@ -239,14 +243,64 @@ export interface ItinerarySummary {
   dataConfidence: DataConfidence;
 }
 
+export interface ItineraryMetroOrigin {
+  id: string;
+  name: string;
+  nameBengali: string;
+  line: string;
+  lineCode: "blue" | "green" | "purple" | "orange";
+  center: Coordinates;
+  gateGuidance: string;
+  popularNearbyPandals: string[];
+}
+
 export interface GeneratedItinerary {
   id: string;
   createdAt: string;
   preferences: ItineraryPreferences;
+  startingMetro?: ItineraryMetroOrigin;
   stops: ItineraryStop[];
   summary: ItinerarySummary;
   unmetConstraints?: string[];
   alternatives?: PandalPlace[];
+}
+
+// ─────────────────────────────────────────────
+// GAMIFIED PUJO QUEST TYPES
+// ─────────────────────────────────────────────
+
+export interface PujoQuestBadge {
+  id: string;
+  name: string;
+  nameBengali: string;
+  icon: string;
+  description: string;
+  unlockedAt?: string;
+}
+
+export interface PujoQuestLevel {
+  level: number;
+  title: string;
+  titleBengali: string;
+  minXp: number;
+  maxXp: number;
+  badgeIcon: string;
+}
+
+export interface PujoQuestProgress {
+  itineraryId: string;
+  completedStopIds: string[];
+  metroOriginChecked: boolean;
+  totalXp: number;
+  level: number;
+  levelTitle: string;
+  levelTitleBengali: string;
+  completedStopsCount: number;
+  totalStopsCount: number;
+  percentComplete: number;
+  badges: PujoQuestBadge[];
+  isFullyCompleted: boolean;
+  lastUpdated: string;
 }
 
 // ─────────────────────────────────────────────

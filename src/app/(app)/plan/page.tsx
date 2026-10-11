@@ -25,6 +25,7 @@ import {
   Edit2,
   Info,
   SlidersHorizontal,
+  Train,
 } from "lucide-react";
 import type {
   ItineraryPreferences,
@@ -36,6 +37,7 @@ import type {
   PriceRange,
   FoodCategory,
   ItineraryPreset,
+  PujoQuestProgress,
 } from "@/types";
 import {
   generateItinerary,
@@ -49,8 +51,25 @@ import { savePlan, getShareableUrl, getPlanById, decodeSharedItinerary } from "@
 import { PANDAL_DATA } from "@/data/pandals";
 import { isRoutablePandal } from "@/lib/pandal-validator";
 import { ITINERARY_PRESETS } from "@/data/presets";
-import { KOLKATA_LOCALITIES, resolveLocalityCoordinates } from "@/data/localities";
-import { ItineraryStopCard, RouteSummary } from "@/components/itinerary/ItineraryStopCard";
+import {
+  KOLKATA_LOCALITIES,
+  KOLKATA_METRO_STATIONS,
+  resolveLocalityCoordinates,
+  getMetroStationById,
+  getNearestMetroStation,
+} from "@/data/localities";
+import {
+  ItineraryStopCard,
+  RouteSummary,
+  MetroOriginNode,
+  PujoQuestTrackerCard,
+} from "@/components/itinerary/ItineraryStopCard";
+import {
+  loadQuestProgress,
+  toggleStopInQuest,
+  toggleMetroInQuest,
+  resetQuest,
+} from "@/lib/gamification";
 import { ReportFeedbackModal } from "@/components/ui/ReportFeedbackModal";
 import { NoPlanEmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/context/AuthContext";
@@ -65,6 +84,7 @@ const InteractiveMap = dynamic(
 // Constants
 // ─────────────────────────────────────────────
 
+const METRO_STATIONS = KOLKATA_METRO_STATIONS;
 const LOCALITIES = KOLKATA_LOCALITIES.map((l) => l.name);
 
 const TIME_OPTIONS = [
@@ -137,8 +157,8 @@ function PlanPageInner() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
-  // 10 Dimensions of Planner form state
-  const [locality, setLocality] = useState(LOCALITIES[0]);
+  // 10 Dimensions of Planner form state (Defaulting origin to Shyambazar Metro Hub)
+  const [locality, setLocality] = useState(METRO_STATIONS[1]?.name || LOCALITIES[0]);
   const [availableMinutes, setAvailableMinutes] = useState(240);
   const [startTime, setStartTime] = useState("10:00");
   const [selectedTags, setSelectedTags] = useState<ExperienceTag[]>(["iconic", "artistic"]);
@@ -154,6 +174,16 @@ function PlanPageInner() {
 
   // Itinerary state
   const [itinerary, setItinerary] = useState<GeneratedItinerary | null>(null);
+  const [questProgress, setQuestProgress] = useState<PujoQuestProgress | null>(null);
+
+  // Sync gamified quest progress when itinerary changes
+  useEffect(() => {
+    if (itinerary) {
+      setQuestProgress(loadQuestProgress(itinerary));
+    } else {
+      setQuestProgress(null);
+    }
+  }, [itinerary]);
   const [diagnostics, setDiagnostics] = useState<PlanningDiagnostics | null>(null);
   const [selectedStopId, setSelectedStopId] = useState<string | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -258,9 +288,12 @@ function PlanPageInner() {
 
   function handleGenerate() {
     setIsGenerating(true);
+    const matchedMetro = getMetroStationById(locality);
     const coords = resolveLocalityCoordinates(locality);
     const prefs: ItineraryPreferences = {
       startingLocality: locality,
+      startingMetroStationId: matchedMetro?.id,
+      startingMetroStationName: matchedMetro?.name,
       startingLatitude: coords.latitude,
       startingLongitude: coords.longitude,
       availableMinutes,
@@ -281,9 +314,28 @@ function PlanPageInner() {
       const result = generateItineraryWithDiagnostics(prefs);
       setItinerary(result.itinerary);
       setDiagnostics(result.diagnostics);
+      setQuestProgress(loadQuestProgress(result.itinerary));
       setIsGenerating(false);
       setView("itinerary");
     }, 600);
+  }
+
+  function handleToggleStopComplete(stopId: string) {
+    if (!itinerary) return;
+    const updated = toggleStopInQuest(itinerary, stopId);
+    setQuestProgress(updated);
+  }
+
+  function handleToggleMetroComplete() {
+    if (!itinerary) return;
+    const updated = toggleMetroInQuest(itinerary);
+    setQuestProgress(updated);
+  }
+
+  function handleResetQuest() {
+    if (!itinerary) return;
+    const updated = resetQuest(itinerary);
+    setQuestProgress(updated);
   }
 
   function handleRemoveStop(stopId: string) {
@@ -438,6 +490,10 @@ function PlanPageInner() {
             onRegenerate={handleRegenerate}
             onSave={handleSave}
             onShare={handleShare}
+            questProgress={questProgress}
+            onToggleStopComplete={handleToggleStopComplete}
+            onToggleMetroComplete={handleToggleMetroComplete}
+            onResetQuest={handleResetQuest}
           />
         )
       )}
@@ -557,16 +613,65 @@ function PlannerForm({
         icon={<MapPin size={20} />}
         title="Where are you starting?"
       >
-        <select
-          value={locality}
-          onChange={(e) => setLocality(e.target.value)}
-          className="w-full h-12 px-4 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] focus:outline-none focus:border-[#6F1830] focus:ring-2 focus:ring-[#6F1830]/20 text-sm"
-          aria-label="Starting locality"
-        >
-          {LOCALITIES.map((l) => (
-            <option key={l} value={l}>{l}</option>
-          ))}
-        </select>
+        <div className="space-y-3">
+          <select
+            value={locality}
+            onChange={(e) => setLocality(e.target.value)}
+            className="w-full h-12 px-4 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] focus:outline-none focus:border-[#6F1830] focus:ring-2 focus:ring-[#6F1830]/20 text-sm font-medium"
+            aria-label="Starting locality or metro station"
+          >
+            <optgroup label="🚇 Kolkata Metro Stations (Fastest Pujo Hopping)">
+              {METRO_STATIONS.map((m) => (
+                <option key={m.id} value={m.name}>
+                  {m.name} ({m.nameBengali})
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="📍 Kolkata Neighbourhoods">
+              {LOCALITIES.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+
+          {/* Metro Station Exit Guidance Card */}
+          {(() => {
+            const metroInfo =
+              getMetroStationById(locality) ||
+              METRO_STATIONS.find(
+                (m) =>
+                  locality.toLowerCase().includes(m.name.toLowerCase()) ||
+                  m.aliases.some((a) => locality.toLowerCase().includes(a))
+              );
+            if (!metroInfo) return null;
+            return (
+              <div className="p-3 bg-[#FFF5E6] rounded-xl border border-[#D99B32]/40 text-xs space-y-1">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="font-semibold text-[#6F1830] flex items-center gap-1.5">
+                    <Train size={14} className="text-[#005EB8]" />
+                    <span>{metroInfo.name}</span>
+                  </span>
+                  <span className="text-[10px] uppercase font-bold text-[#7a6465] px-2 py-0.5 rounded-full bg-white border border-[rgba(111,24,48,0.1)]">
+                    {metroInfo.line}
+                  </span>
+                </div>
+                <p className="text-[#3d3032] flex items-start gap-1.5 pt-1">
+                  <Footprints size={13} className="text-[#D99B32] flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Exit Guidance:</strong> {metroInfo.gateGuidance}
+                  </span>
+                </p>
+                {metroInfo.popularNearbyPandals.length > 0 && (
+                  <p className="text-[11px] text-[#7a6465] pt-0.5">
+                    Nearby major pandals: {metroInfo.popularNearbyPandals.join(" · ")}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+        </div>
       </FormSection>
 
       {/* Step 2 — Time & Schedule */}
@@ -900,6 +1005,10 @@ interface ItineraryViewProps {
   onRegenerate: () => void;
   onSave: () => void;
   onShare: () => void;
+  questProgress?: PujoQuestProgress | null;
+  onToggleStopComplete?: (stopId: string) => void;
+  onToggleMetroComplete?: () => void;
+  onResetQuest?: () => void;
 }
 
 function PersonalizationInsightsCard({ diagnostics }: { diagnostics: PlanningDiagnostics }) {
@@ -988,6 +1097,10 @@ function ItineraryView({
   onRegenerate,
   onSave,
   onShare,
+  questProgress,
+  onToggleStopComplete,
+  onToggleMetroComplete,
+  onResetQuest,
 }: ItineraryViewProps) {
   return (
     <div className="space-y-6">
@@ -1027,6 +1140,14 @@ function ItineraryView({
       {/* Route summary */}
       <RouteSummary itinerary={itinerary} />
 
+      {/* Gamified Pujo Quest Tracker */}
+      {questProgress && (
+        <PujoQuestTrackerCard
+          quest={questProgress}
+          onReset={onResetQuest}
+        />
+      )}
+
       {/* Personalization Diagnostics */}
       {diagnostics && <PersonalizationInsightsCard diagnostics={diagnostics} />}
 
@@ -1048,6 +1169,18 @@ function ItineraryView({
       ) : (
         <div className="space-y-1 relative">
           <div className="timeline-line" aria-hidden="true" />
+
+          {/* Starting Metro Origin Node */}
+          {itinerary.startingMetro && (
+            <MetroOriginNode
+              startingMetro={itinerary.startingMetro}
+              startTime={itinerary.preferences.startTime}
+              firstStop={itinerary.stops[0]}
+              isChecked={questProgress?.metroOriginChecked}
+              onToggleCheck={onToggleMetroComplete}
+            />
+          )}
+
           {itinerary.stops.map((stop, i) => (
             <ItineraryStopCard
               key={stop.id}
@@ -1061,6 +1194,8 @@ function ItineraryView({
               onMoveDown={onMoveDown}
               onToggleLock={onToggleLock}
               onReport={onReport}
+              isCompleted={questProgress?.completedStopIds.includes(stop.id)}
+              onToggleComplete={onToggleStopComplete}
             />
           ))}
         </div>
