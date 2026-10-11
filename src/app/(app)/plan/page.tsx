@@ -537,6 +537,8 @@ function PlanPageInner() {
           setRequiresAccessibility={setRequiresAccessibility}
           includeFood={includeFood}
           setIncludeFood={setIncludeFood}
+          foodCategories={foodCategories}
+          toggleFoodCategory={toggleFoodCategory}
           activePresetId={activePresetId}
           onApplyPreset={handleApplyPreset}
           onGenerate={handleGenerate}
@@ -665,6 +667,71 @@ const STREAMLINED_VIBES: {
   },
 ];
 
+const FOOD_GENRES: {
+  category: FoodCategory;
+  label: string;
+  labelBn: string;
+  emoji: string;
+  desc: string;
+}[] = [
+  {
+    category: "sweets",
+    label: "Heritage Sweets & Mishti",
+    labelBn: "ঐতিহ্যবাহী মিষ্টি ও রসগোল্লা",
+    emoji: "🍯",
+    desc: "Rosogolla, Sandesh, Mishti Doi & Chanar Jilipi",
+  },
+  {
+    category: "biryani",
+    label: "Kolkata Biryani",
+    labelBn: "কলকাতা বিরিয়ানি ও মোগলাই",
+    emoji: "🍗",
+    desc: "Legendary aloo-dim biryani, chaap & firni",
+  },
+  {
+    category: "bengali_cuisine",
+    label: "Authentic Bengali Dishes",
+    labelBn: "খাঁটি বাঙালি খাবার",
+    emoji: "🍛",
+    desc: "Kosha Mangsho, Fish Fry, Luchi & Shorshe Ilish",
+  },
+  {
+    category: "rolls_kathi",
+    label: "Kathi Rolls & Parathas",
+    labelBn: "কাঠি রোল ও মোগলাই পরোটা",
+    emoji: "🌯",
+    desc: "Flaky egg-chicken kathi rolls & crisp parathas",
+  },
+  {
+    category: "street_food",
+    label: "Street Food & Phuchka",
+    labelBn: "ফুচকা ও কলকাতার স্ট্রিট ফুড",
+    emoji: "🍢",
+    desc: "Piping-hot singara, telebhaja, phuchka & jhalmuri",
+  },
+  {
+    category: "puja_stall",
+    label: "Pujo Mela Food Stalls",
+    labelBn: "পুজো মেলা ও প্যান্ডেল স্টল",
+    emoji: "🎪",
+    desc: "Night-market food clusters around pandal avenues",
+  },
+  {
+    category: "cafe",
+    label: "Heritage Cafés & Chai",
+    labelBn: "ক্যাফে ও চা-আড্ডা",
+    emoji: "☕",
+    desc: "Coffee House nostalgia, Paramount sherbets & kulhad chai",
+  },
+  {
+    category: "restaurant",
+    label: "Dine-in Restaurants",
+    labelBn: "রেস্তোরাঁ ও ডাইনিং",
+    emoji: "🍽️",
+    desc: "Family seating, Kolkata Chinese & multi-cuisine favourites",
+  },
+];
+
 interface PlannerFormProps {
   selectedRegionId: string;
   onSelectRegion: (id: string) => void;
@@ -678,6 +745,8 @@ interface PlannerFormProps {
   setRequiresAccessibility: (v: boolean) => void;
   includeFood: boolean;
   setIncludeFood: (v: boolean) => void;
+  foodCategories: FoodCategory[];
+  toggleFoodCategory: (cat: FoodCategory) => void;
   activePresetId: string | null;
   onApplyPreset: (preset: ItineraryPreset) => void;
   onGenerate: () => void;
@@ -697,6 +766,8 @@ function PlannerForm({
   setRequiresAccessibility,
   includeFood,
   setIncludeFood,
+  foodCategories,
+  toggleFoodCategory,
   activePresetId,
   onApplyPreset,
   onGenerate,
@@ -1050,7 +1121,7 @@ function PlannerForm({
                     Include Famous Sweets &amp; Food Stops (মিষ্টি ও খাবার)
                   </span>
                   <span className="text-[11px] sm:text-xs text-[#554042]">
-                    Adds verified heritage mishti or Kolkata street food stops along your walking route
+                    Adds verified heritage mishti or Kolkata food joints along your walking route
                   </span>
                 </div>
               </div>
@@ -1059,7 +1130,7 @@ function PlannerForm({
                 role="switch"
                 aria-checked={includeFood}
                 onClick={() => setIncludeFood(!includeFood)}
-                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 cursor-pointer ${
                   includeFood ? "bg-[#6F1830]" : "bg-gray-300"
                 }`}
                 aria-label="Include food stops in itinerary"
@@ -1071,6 +1142,70 @@ function PlannerForm({
                 />
               </button>
             </div>
+
+            {/* Food Genres Selection (Visible when food is included) */}
+            {includeFood && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#FFFDF9] via-[#FFF9F0] to-[#FFF5E6] border-2 border-[#D99B32]/35 shadow-xs space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div>
+                    <label className="block text-xs font-bold text-[#6F1830] uppercase tracking-wider">
+                      Select Food Genres &amp; Cuisines · পছন্দের খাবারের ধরন
+                    </label>
+                    <p className="text-[11px] text-[#554042] mt-0.5">
+                      Choose which food styles to suggest along your route (select one or more):
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#8B5000] bg-white px-2.5 py-1 rounded-full border border-[#D99B32]/30 shadow-2xs">
+                    {foodCategories.length} {foodCategories.length === 1 ? "Genre" : "Genres"} Selected
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+                  {FOOD_GENRES.map(({ category, label, labelBn, emoji, desc }) => {
+                    const isSelected = foodCategories.includes(category);
+                    return (
+                      <button
+                        key={category}
+                        type="button"
+                        onClick={() => toggleFoodCategory(category)}
+                        className={`p-3 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between min-h-[66px] cursor-pointer touch-target-min ${
+                          isSelected
+                            ? "bg-[#6F1830] border-[#6F1830] text-white shadow-sm ring-2 ring-[#6F1830]/20"
+                            : "bg-white border-[rgba(111,24,48,0.15)] text-[#211A1B] hover:border-[#6F1830] hover:bg-[#FFF5E6]/50 shadow-2xs"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm">
+                              <span>{emoji}</span>
+                              <span className="truncate">{label}</span>
+                            </div>
+                            {isSelected && (
+                              <Check size={14} className="text-amber-200 flex-shrink-0" />
+                            )}
+                          </div>
+                          <div
+                            className={`text-[11px] font-bengali font-semibold ${
+                              isSelected ? "text-amber-100" : "text-[#6F1830]"
+                            }`}
+                          >
+                            {labelBn}
+                          </div>
+                        </div>
+                        <p
+                          className={`text-[10px] mt-1.5 leading-snug ${
+                            isSelected ? "text-white/85" : "text-[#554042]"
+                          }`}
+                        >
+                          {desc}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Accessibility / Senior Mode Toggle */}
             <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-[rgba(111,24,48,0.12)] shadow-xs">
