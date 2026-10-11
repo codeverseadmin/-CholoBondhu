@@ -111,16 +111,16 @@ export default function FoodPage() {
         )}
       </div>
 
-      {/* Primary Category Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+      {/* Primary Category Tabs - Wrapped for zero horizontal scrolling */}
+      <div className="flex flex-wrap gap-2 mb-5">
         {CATEGORIES.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setActiveCategory(key)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all min-h-[40px] ${
+            className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all min-h-[42px] flex items-center justify-center ${
               activeCategory === key
-                ? "bg-[#6F1830] text-white"
-                : "bg-white border border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
+                ? "bg-[#6F1830] text-white shadow-sm"
+                : "bg-white border border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830] hover:bg-[#FFF5E6]/40"
             }`}
             aria-pressed={activeCategory === key}
           >

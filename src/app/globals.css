@@ -99,6 +99,9 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
+  overflow-x: clip;
+  max-width: 100vw;
+  width: 100%;
 }
 
 body {
@@ -107,7 +110,9 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
+  max-width: 100vw;
+  width: 100%;
 }
 
 /* Headings use Playfair Display */
@@ -490,3 +495,30 @@ h4, h5, h6 {
   background: #FFF5E6 !important;
   border: 1px solid rgba(111, 24, 48, 0.2) !important;
 }
+
+/* ─────────────────────────────────────────────
+   MOBILE ACCESSIBILITY & SAFE AREA PADDING
+   ───────────────────────────────────────────── */
+
+.page-with-bottom-nav {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .page-with-bottom-nav {
+    padding-bottom: 3rem;
+  }
+}
+
+/* Touch Targets: minimum 44px for accessibility */
+.touch-target-min {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Ensure no elements cause horizontal jitter on mobile */
+.no-horizontal-overflow {
+  max-width: 100%;
+  overflow-x: clip;
+}
+

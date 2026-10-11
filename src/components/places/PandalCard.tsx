@@ -293,16 +293,14 @@ export function PandalCard({
             </div>
           )
         ) : (
-          <div className="mb-3 p-2 rounded-lg bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-1.5">
-            <MapPin size={13} className="text-amber-700 flex-shrink-0 mt-0.5" />
+          <div className="mb-3 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
+            <MapPin size={14} className="text-amber-700 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="font-medium">
-                {pandal.coordinatesStatus === "needs_verified_geocoding"
-                  ? "Location coordinates pending field geocoding."
-                  : "Reported coordinates require field verification."}
+              <p className="font-semibold text-xs text-amber-950">
+                Pandal verification in progress
               </p>
-              <p className="text-[10px] text-amber-800/90 mt-0.5">
-                Available in list search. Turn-by-turn routing excluded until coordinates are verified.
+              <p className="text-[11px] text-amber-900/90 mt-0.5 leading-snug">
+                Listed for directory browsing. Turn-by-turn route directions will be unlocked once festival ground layout is verified.
               </p>
             </div>
           </div>

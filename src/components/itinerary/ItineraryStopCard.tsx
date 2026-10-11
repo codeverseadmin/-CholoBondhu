@@ -190,19 +190,15 @@ export function ItineraryStopCard({
 
         {/* Travel time from previous */}
         {stop.estimatedTravelMinutesFromPrevious != null && (
-          <div className="text-xs text-[#7a6465] mb-2 bg-[#FFF5E6]/60 px-2.5 py-1.5 rounded-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-            <span>
-              ~{stop.estimatedTravelMinutesFromPrevious} min transit from previous stop
-              {stop.straightLineDistanceKmFromPrevious != null && (
-                <span className="text-[10px] text-[#7a6465] block sm:inline sm:ml-1">
-                  (~{stop.straightLineDistanceKmFromPrevious} km straight · ~{stop.estimatedRoadDistanceKmFromPrevious} km road)
+          <div className="text-xs text-[#554042] mb-2 bg-[#FFF5E6]/70 px-3 py-1.5 rounded-xl border border-[#D99B32]/25 flex items-center justify-between gap-1">
+            <span className="font-medium flex items-center gap-1.5">
+              <span>🚶</span>
+              <span>~{stop.estimatedTravelMinutesFromPrevious} min walk from previous stop</span>
+              {stop.estimatedRoadDistanceKmFromPrevious != null && (
+                <span className="text-[11px] text-[#7a6465] font-normal">
+                  (~{stop.estimatedRoadDistanceKmFromPrevious} km)
                 </span>
               )}
-            </span>
-            <span className="text-[10px] text-[#7a6465]/80 italic">
-              {stop.routingMethodology === "urban_heuristic"
-                ? "urban heuristic (1.6x)"
-                : "estimated"}
             </span>
           </div>
         )}
@@ -647,11 +643,7 @@ export function RouteSummary({ itinerary }: RouteSummaryProps) {
           <SummaryCell
             label="Distance"
             value={`~${summary.totalEstimatedRoadDistanceKm} km`}
-            sub={
-              summary.totalStraightLineDistanceKm != null
-                ? `~${summary.totalStraightLineDistanceKm} km straight`
-                : "est. road"
-            }
+            sub="walking route"
           />
         )}
       </div>

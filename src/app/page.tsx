@@ -41,7 +41,7 @@ export default function HomePage() {
   const finalFeatured = featured.length >= 4 ? featured : getFeaturedPandals().slice(0, 6);
 
   return (
-    <div className="min-h-dvh flex flex-col">
+    <div className="min-h-dvh flex flex-col page-with-bottom-nav no-horizontal-overflow">
       {/* ─── HERO ─────────────────────────────────── */}
       <section
         className="hero-gradient relative overflow-hidden"
@@ -158,7 +158,7 @@ export default function HomePage() {
                         </span>
                       </div>
                       <p className="text-white/85 text-xs sm:text-sm mt-0.5 leading-relaxed">
-                        প্রবীণ ও পরিবারের জন্য বিশেষ সকালের শান্ত সাবেকি রুট • Low walking, 100% step-free, morning peaceful darshan (8:30 AM). Skips the 10-question questionnaire!
+                        প্রবীণ ও পরিবারের জন্য বিশেষ সকালের শান্ত সাবেকি রুট • Low walking, 100% step-free, morning peaceful darshan (8:30 AM). Instant 1-tap route generation!
                       </p>
                     </div>
                   </div>
@@ -344,31 +344,36 @@ export default function HomePage() {
       <section className="max-w-6xl mx-auto px-4 py-14">
         <div className="text-center mb-10">
           <h2 className="font-display text-3xl text-[#211A1B]">
-            Your Pujo in 4 steps
+            Your Pujo in 3 Easy Steps
           </h2>
+          <p className="text-sm text-[#554042] mt-1">
+            No lengthy questionnaires. Pick your area and we calculate verified walking routes.
+          </p>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { num: "01", icon: <MapPin size={22} />, label: "Choose your starting point" },
-            { num: "02", icon: <Clock size={22} />, label: "Set your available time" },
-            { num: "03", icon: <Users size={22} />, label: "Pick your preferences" },
-            { num: "04", icon: <Route size={22} />, label: "Get your personalized route" },
+            { num: "01", icon: <MapPin size={22} />, title: "Choose Your Puja Area", label: "Select North, Central, South, College Square, or New Town — assigned directly to its optimal Metro station." },
+            { num: "02", icon: <Clock size={22} />, title: "Time & Duration", label: "Choose from 2h quick hopper to 7h grand night tour with realistic queue buffers." },
+            { num: "03", icon: <Route size={22} />, title: "Vibe & Generate", label: "Select Sabeki, Iconic, Art or Peaceful themes and get your turn-by-turn walking guide." },
           ].map((step) => (
-            <div key={step.num} className="flex flex-col items-center text-center gap-3">
+            <div key={step.num} className="card p-6 flex flex-col items-center text-center gap-3">
               <div className="w-12 h-12 rounded-full bg-[#6F1830]/10 text-[#6F1830] flex items-center justify-center">
                 {step.icon}
               </div>
               <span className="font-display text-3xl text-[#E8D1C9] font-bold">
                 {step.num}
               </span>
-              <p className="text-sm text-[#3d3032] font-medium leading-snug">
+              <h3 className="font-bold text-base text-[#211A1B]">
+                {step.title}
+              </h3>
+              <p className="text-xs text-[#554042] leading-relaxed">
                 {step.label}
               </p>
             </div>
           ))}
         </div>
         <div className="text-center mt-10">
-          <Link href="/plan" className="btn btn-primary px-10 py-3.5 text-base">
+          <Link href="/plan" className="btn btn-primary px-10 py-3.5 text-base touch-target-min">
             Start Planning
             <ArrowRight size={18} />
           </Link>

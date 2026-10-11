@@ -173,8 +173,8 @@ export default function DiscoverPage() {
         )}
       </div>
 
-      {/* Regional Zone Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide" aria-label="Filter by region">
+      {/* Regional Zone Pills - Flex Wrapped without horizontal scroll */}
+      <div className="flex flex-wrap gap-2 mb-4" aria-label="Filter by region">
         {REGIONS.map((r) => (
           <button
             key={r.id}
@@ -182,10 +182,10 @@ export default function DiscoverPage() {
               setSelectedRegion(r.id);
               setSelectedArea("all");
             }}
-            className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+            className={`px-4 py-2 rounded-full text-xs font-semibold transition-all min-h-[40px] flex items-center justify-center ${
               selectedRegion === r.id
-                ? "bg-[#6F1830] text-white"
-                : "bg-white border border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
+                ? "bg-[#6F1830] text-white shadow-sm"
+                : "bg-white border border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830] hover:bg-[#FFF5E6]/40"
             }`}
             aria-pressed={selectedRegion === r.id}
           >

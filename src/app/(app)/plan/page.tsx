@@ -27,6 +27,8 @@ import {
   SlidersHorizontal,
   Train,
   Heart,
+  Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import type {
   ItineraryPreferences,
@@ -529,26 +531,12 @@ function PlanPageInner() {
           setLocality={setLocality}
           availableMinutes={availableMinutes}
           setAvailableMinutes={setAvailableMinutes}
-          startTime={startTime}
-          setStartTime={setStartTime}
           selectedTags={selectedTags}
           toggleTag={toggleTag}
-          transportMode={transportMode}
-          setTransportMode={setTransportMode}
-          pacing={pacing}
-          setPacing={setPacing}
-          walkingTolerance={walkingTolerance}
-          setWalkingTolerance={setWalkingTolerance}
-          targetStopCount={targetStopCount}
-          setTargetStopCount={setTargetStopCount}
           requiresAccessibility={requiresAccessibility}
           setRequiresAccessibility={setRequiresAccessibility}
           includeFood={includeFood}
           setIncludeFood={setIncludeFood}
-          foodCategories={foodCategories}
-          toggleFoodCategory={toggleFoodCategory}
-          maxBudget={maxBudget}
-          setMaxBudget={setMaxBudget}
           activePresetId={activePresetId}
           onApplyPreset={handleApplyPreset}
           onGenerate={handleGenerate}
@@ -587,6 +575,96 @@ function PlanPageInner() {
 // Planner Form Component
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// Streamlined Constants
+// ─────────────────────────────────────────────
+
+const STREAMLINED_TIME_OPTIONS = [
+  {
+    value: 120,
+    label: "2 Hours",
+    labelBn: "২ ঘণ্টা",
+    tagline: "Quick 2–3 Pandal Hopper",
+    desc: "Fast, focused darshan with minimal walking",
+    icon: "⚡",
+  },
+  {
+    value: 210,
+    label: "3.5 Hours",
+    labelBn: "৩.৫ ঘণ্টা",
+    tagline: "Classic Walking Trail",
+    desc: "Most popular: 3–4 iconic pandals + sweet shop",
+    icon: "🚶",
+  },
+  {
+    value: 300,
+    label: "5 Hours",
+    labelBn: "৫ ঘণ্টা",
+    tagline: "Evening Darshan & Food",
+    desc: "5–6 pandals with dedicated dining break",
+    icon: "🌙",
+  },
+  {
+    value: 420,
+    label: "7 Hours",
+    labelBn: "৭ ঘণ্টা",
+    tagline: "All-Night Grand Tour",
+    desc: "Midnight to dawn trail covering 7+ grand shrines",
+    icon: "✨",
+  },
+];
+
+const STREAMLINED_VIBES: {
+  tag: ExperienceTag;
+  label: string;
+  labelBn: string;
+  emoji: string;
+  desc: string;
+}[] = [
+  {
+    tag: "traditional",
+    label: "Sabeki & Traditional",
+    labelBn: "ঐতিহ্যবাহী ও সাবেকি",
+    emoji: "🪔",
+    desc: "Historic century-old barowari & rajbari pujas",
+  },
+  {
+    tag: "iconic",
+    label: "Grand & Iconic",
+    labelBn: "বিখ্যাত ও জমকালো",
+    emoji: "⭐",
+    desc: "Kolkata's most famous landmark crowd-pullers",
+  },
+  {
+    tag: "artistic",
+    label: "Art & Theme Installations",
+    labelBn: "থিম ও শিল্পকলা",
+    emoji: "🎨",
+    desc: "Innovative architectural masterpieces & concepts",
+  },
+  {
+    tag: "less_crowded",
+    label: "Peaceful & Quieter",
+    labelBn: "শান্ত ও কম ভিড়",
+    emoji: "🌿",
+    desc: "Serene darshan without exhausting queues",
+  },
+  {
+    tag: "photography",
+    label: "Lighting & Visuals",
+    labelBn: "ফটোগ্রাফি ও আলোকসজ্জা",
+    emoji: "📷",
+    desc: "Spectacular illumination & craftsmanship",
+  },
+  {
+    tag: "family_friendly",
+    label: "Family Friendly",
+    labelBn: "পারিবারিক পরিক্রমা",
+    emoji: "👨‍👩‍👧",
+    desc: "Comfortable pacing, broad lanes & seating spots",
+  },
+];
+
 interface PlannerFormProps {
   selectedRegionId: string;
   onSelectRegion: (id: string) => void;
@@ -594,26 +672,12 @@ interface PlannerFormProps {
   setLocality: (v: string) => void;
   availableMinutes: number;
   setAvailableMinutes: (v: number) => void;
-  startTime: string;
-  setStartTime: (v: string) => void;
   selectedTags: ExperienceTag[];
   toggleTag: (t: ExperienceTag) => void;
-  transportMode: TransportMode;
-  setTransportMode: (v: TransportMode) => void;
-  pacing: ItineraryPacing;
-  setPacing: (v: ItineraryPacing) => void;
-  walkingTolerance: WalkingTolerance;
-  setWalkingTolerance: (v: WalkingTolerance) => void;
-  targetStopCount: number;
-  setTargetStopCount: (v: number) => void;
   requiresAccessibility: boolean;
   setRequiresAccessibility: (v: boolean) => void;
   includeFood: boolean;
   setIncludeFood: (v: boolean) => void;
-  foodCategories: FoodCategory[];
-  toggleFoodCategory: (c: FoodCategory) => void;
-  maxBudget: PriceRange | "any";
-  setMaxBudget: (b: PriceRange | "any") => void;
   activePresetId: string | null;
   onApplyPreset: (preset: ItineraryPreset) => void;
   onGenerate: () => void;
@@ -621,56 +685,59 @@ interface PlannerFormProps {
 }
 
 function PlannerForm({
-  selectedRegionId, onSelectRegion,
-  locality, setLocality,
-  availableMinutes, setAvailableMinutes,
-  startTime, setStartTime,
-  selectedTags, toggleTag,
-  transportMode, setTransportMode,
-  pacing, setPacing,
-  walkingTolerance, setWalkingTolerance,
-  targetStopCount, setTargetStopCount,
-  requiresAccessibility, setRequiresAccessibility,
-  includeFood, setIncludeFood,
-  foodCategories, toggleFoodCategory,
-  maxBudget, setMaxBudget,
-  activePresetId, onApplyPreset,
-  onGenerate, isGenerating,
+  selectedRegionId,
+  onSelectRegion,
+  locality,
+  setLocality,
+  availableMinutes,
+  setAvailableMinutes,
+  selectedTags,
+  toggleTag,
+  requiresAccessibility,
+  setRequiresAccessibility,
+  includeFood,
+  setIncludeFood,
+  activePresetId,
+  onApplyPreset,
+  onGenerate,
+  isGenerating,
 }: PlannerFormProps) {
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-3xl space-y-7 no-horizontal-overflow">
       {/* Quick Curated Presets Bar */}
-      <div className="card p-5 bg-gradient-to-br from-[#FFFDF9] to-[#FFF5E6] border border-[#D99B32]/30">
+      <div className="card p-5 sm:p-6 bg-gradient-to-br from-[#FFFDF9] via-[#FFF5E6] to-[#FFF9F0] border-2 border-[#D99B32]/35 rounded-3xl shadow-sm">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Zap size={18} className="text-[#D99B32]" />
-            <h2 className="font-display font-semibold text-[#211A1B] text-base">
-              Curated Festival Trails
+            <span className="w-8 h-8 rounded-xl bg-[#D99B32] text-white flex items-center justify-center shadow-xs">
+              <Zap size={18} />
+            </span>
+            <h2 className="font-display font-bold text-[#211A1B] text-base sm:text-lg">
+              1-Tap Curated Trails · জনপ্রিয় প্যান্ডেল ট্রেইল
             </h2>
           </div>
-          <span className="text-[11px] text-[#7a6465] font-medium">
-            Tap a trail to auto-fill preferences
+          <span className="text-[11px] text-[#8B5000] font-bold uppercase tracking-wider hidden sm:inline">
+            Instant Route
           </span>
         </div>
-        <p className="text-xs text-[#7a6465] mb-3">
-          Hand-crafted itineraries calibrated with authentic Kolkata transit times and crowds.
+        <p className="text-xs text-[#554042] mb-3.5 leading-relaxed">
+          Tap any pre-calibrated trail to automatically configure your route with verified walking corridors:
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {ITINERARY_PRESETS.map((preset) => (
             <button
               key={preset.id}
               onClick={() => onApplyPreset(preset)}
-              className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+              className={`p-3.5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between min-h-[58px] ${
                 activePresetId === preset.id
-                  ? "bg-[#6F1830] border-[#6F1830] text-white shadow-md"
-                  : "bg-white border-[rgba(111,24,48,0.15)] text-[#211A1B] hover:border-[#6F1830] hover:bg-[#FFF5E6]/40"
+                  ? "bg-[#6F1830] border-[#6F1830] text-white shadow-md ring-2 ring-[#6F1830]/20"
+                  : "bg-white border-[rgba(111,24,48,0.15)] text-[#211A1B] hover:border-[#6F1830] hover:bg-[#FFF5E6]/50 shadow-xs"
               }`}
               aria-pressed={activePresetId === preset.id}
             >
               <div>
                 <div className="flex items-center justify-between gap-1 mb-1">
-                  <div className="flex items-center gap-1.5 font-semibold text-xs">
+                  <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm">
                     <span className={activePresetId === preset.id ? "text-amber-200" : "text-[#D99B32]"}>
                       {getPresetIcon(preset.iconName)}
                     </span>
@@ -680,11 +747,11 @@ function PlannerForm({
                     <Check size={14} className="text-amber-200 flex-shrink-0" />
                   )}
                 </div>
-                <div className={`text-[10px] line-clamp-1 font-bengali ${activePresetId === preset.id ? "text-amber-100" : "text-[#7a6465]"}`}>
+                <div className={`text-[11px] font-bengali ${activePresetId === preset.id ? "text-amber-100" : "text-[#6F1830] font-semibold"}`}>
                   {preset.nameBengali}
                 </div>
               </div>
-              <p className={`text-[11px] mt-1.5 leading-tight ${activePresetId === preset.id ? "text-white/80" : "text-[#7a6465]"}`}>
+              <p className={`text-[11px] mt-1.5 leading-tight ${activePresetId === preset.id ? "text-white/85" : "text-[#554042]"}`}>
                 {preset.tagline}
               </p>
             </button>
@@ -695,16 +762,16 @@ function PlannerForm({
       {/* Step 1 — Puja Area & Starting Metro Navigation */}
       <FormSection
         number="01"
-        icon={<MapPin size={20} />}
-        title="Choose Your Puja Area"
+        icon={<MapPin size={22} />}
+        title="Choose Your Puja Area · আপনার পুজো এলাকা"
       >
         <div className="space-y-4">
-          <p className="text-xs text-[#7a6465] leading-relaxed">
-            Choose the area you wish to visit. Our app automatically tells you the specific starting Metro Station, exit gate, and begins your tour navigation from there.
+          <p className="text-xs sm:text-sm text-[#554042] leading-relaxed">
+            Select the Kolkata zone you wish to visit. Cholo Bondhu automatically assigns the optimal starting Metro Station, exit gate guidance, and starts your route navigation directly from there:
           </p>
 
           {/* 5 Core Region Selection Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {CORE_PUJO_REGIONS.map((region) => {
               const isSelected = selectedRegionId === region.id || locality.toLowerCase().includes(region.name.toLowerCase());
               return (
@@ -712,34 +779,34 @@ function PlannerForm({
                   key={region.id}
                   type="button"
                   onClick={() => onSelectRegion(region.id)}
-                  className={`p-3.5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between relative group ${
+                  className={`p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between relative group min-h-[110px] ${
                     isSelected
-                      ? "bg-gradient-to-br from-[#FFFDF9] to-[#FFF5E6] border-[#6F1830] ring-2 ring-[#6F1830]/20 shadow-md"
+                      ? "bg-gradient-to-br from-[#FFFDF9] to-[#FFF5E6] border-[#6F1830] ring-2 ring-[#6F1830]/25 shadow-md"
                       : "bg-white border-[rgba(111,24,48,0.15)] hover:border-[#6F1830]/50 hover:bg-[#FFFDF9]/60 shadow-xs"
                   }`}
                   aria-pressed={isSelected}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5">
                         <span
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shadow-xs ${
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-xs ${
                             isSelected
                               ? "bg-[#6F1830] text-white"
                               : "bg-[#6F1830]/10 text-[#6F1830] group-hover:bg-[#6F1830] group-hover:text-white"
                           } transition-colors`}
                         >
-                          {region.icon === "Landmark" && <Landmark size={16} />}
-                          {region.icon === "Zap" && <Zap size={16} />}
-                          {region.icon === "Palette" && <Palette size={16} />}
-                          {region.icon === "Users" && <Users size={16} />}
-                          {region.icon === "Train" && <Train size={16} />}
+                          {region.icon === "Landmark" && <Landmark size={18} />}
+                          {region.icon === "Zap" && <Zap size={18} />}
+                          {region.icon === "Palette" && <Palette size={18} />}
+                          {region.icon === "Users" && <Users size={18} />}
+                          {region.icon === "Train" && <Train size={18} />}
                         </span>
                         <div>
-                          <h3 className="font-bold text-sm text-[#211A1B] leading-tight">
+                          <h3 className="font-bold text-sm sm:text-base text-[#211A1B] leading-tight">
                             {region.name}
                           </h3>
-                          <span className="font-bengali text-xs text-[#6F1830] font-semibold">
+                          <span className="font-bengali text-xs text-[#6F1830] font-bold">
                             {region.nameBengali}
                           </span>
                         </div>
@@ -751,18 +818,18 @@ function PlannerForm({
                       )}
                     </div>
 
-                    <p className="text-[11px] text-[#7a6465] line-clamp-2 mt-1 leading-snug">
+                    <p className="text-[11px] text-[#554042] line-clamp-2 mt-1 leading-snug">
                       {region.tagline}
                     </p>
                   </div>
 
                   {/* Assigned Metro Hub Preview Chip */}
-                  <div className="mt-3 pt-2.5 border-t border-[rgba(111,24,48,0.08)] flex items-center justify-between text-[11px]">
-                    <span className="inline-flex items-center gap-1 font-semibold text-[#005EB8] truncate">
-                      <Train size={12} className={region.metroLineCode === "blue" ? "text-[#005EB8]" : "text-[#009639]"} />
+                  <div className="mt-3.5 pt-2.5 border-t border-[rgba(111,24,48,0.08)] flex items-center justify-between text-[11px]">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-[#005EB8] truncate">
+                      <Train size={13} className={region.metroLineCode === "blue" ? "text-[#005EB8]" : "text-[#009639]"} />
                       <span>{region.canonicalMetroName}</span>
                     </span>
-                    <span className="text-[10px] text-[#7a6465] font-medium bg-[#FFF5E6] px-1.5 py-0.5 rounded border border-[#D99B32]/30 flex-shrink-0">
+                    <span className="text-[10px] text-[#8B5000] font-bold bg-[#FFF5E6] px-2 py-0.5 rounded-full border border-[#D99B32]/40 flex-shrink-0">
                       Starts Here
                     </span>
                   </div>
@@ -778,69 +845,69 @@ function PlannerForm({
               CORE_PUJO_REGIONS[0];
 
             return (
-              <div className="p-4 bg-gradient-to-br from-[#FFF9F0] to-[#FFF5E6] rounded-2xl border-2 border-[#D99B32]/50 shadow-sm space-y-2.5">
+              <div className="p-4 sm:p-5 bg-gradient-to-br from-[#FFF9F0] via-[#FFF5E6] to-[#FFFDF9] rounded-2xl border-2 border-[#D99B32]/50 shadow-sm space-y-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="w-7 h-7 rounded-lg bg-[#005EB8] text-white flex items-center justify-center shadow-xs">
-                      <Train size={15} />
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-8 h-8 rounded-xl bg-[#005EB8] text-white flex items-center justify-center shadow-xs">
+                      <Train size={17} />
                     </span>
                     <div>
-                      <span className="text-xs uppercase font-bold tracking-wider text-[#7a6465]">
-                        Assigned Starting Point
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#7a6465] block">
+                        Assigned Starting Hub
                       </span>
-                      <h4 className="font-bold text-sm text-[#6F1830] flex items-center gap-1.5">
+                      <h4 className="font-bold text-sm sm:text-base text-[#6F1830] flex items-center gap-1.5">
                         <span>{activeRegion.canonicalMetroName}</span>
-                        <span className="font-bengali text-xs text-[#7a6465] font-normal">
+                        <span className="font-bengali text-xs text-[#554042] font-semibold">
                           ({activeRegion.canonicalMetroNameBengali})
                         </span>
                       </h4>
                     </div>
                   </div>
 
-                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-white shadow-xs ${
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full text-white shadow-xs ${
                     activeRegion.metroLineCode === "blue" ? "bg-[#005EB8]" : "bg-[#009639]"
                   }`}>
                     {activeRegion.metroLineName}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1 text-xs text-[#3d3032]">
-                  <div className="flex items-start gap-2 bg-white/80 p-2.5 rounded-xl border border-[rgba(111,24,48,0.08)]">
-                    <Footprints size={15} className="text-[#D99B32] flex-shrink-0 mt-0.5" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1 text-xs text-[#3d3032]">
+                  <div className="flex items-start gap-2.5 bg-white/90 p-3 rounded-xl border border-[rgba(111,24,48,0.1)]">
+                    <Footprints size={16} className="text-[#D99B32] flex-shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-[#211A1B] block text-[11px] uppercase tracking-wide">
                         Station Exit & Turnout
                       </strong>
-                      <span className="text-[#3d3032]">{activeRegion.gateGuidance}</span>
+                      <span className="text-[#3d3032] font-medium leading-relaxed">{activeRegion.gateGuidance}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-2 bg-white/80 p-2.5 rounded-xl border border-[rgba(111,24,48,0.08)]">
-                    <Navigation2 size={15} className="text-[#6F1830] flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2.5 bg-white/90 p-3 rounded-xl border border-[rgba(111,24,48,0.1)]">
+                    <Navigation2 size={16} className="text-[#6F1830] flex-shrink-0 mt-0.5" />
                     <div>
                       <strong className="text-[#211A1B] block text-[11px] uppercase tracking-wide">
-                        Turn-by-Turn Navigation
+                        Walking Corridor
                       </strong>
-                      <span className="text-[#7a6465]">{activeRegion.startingCorridorDescription}</span>
+                      <span className="text-[#554042] font-medium leading-relaxed">{activeRegion.startingCorridorDescription}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[11px] text-[#7a6465] pt-0.5">
-                  <span className="font-semibold text-[#6F1830]">Featured pandals in this route:</span>
+                <div className="flex items-center gap-2 text-xs text-[#554042] pt-0.5 flex-wrap">
+                  <span className="font-bold text-[#6F1830]">Featured in this corridor:</span>
                   <span>{activeRegion.popularPandals.join(" · ")}</span>
                 </div>
               </div>
             );
           })()}
 
-          {/* Optional Advanced Override Collapsible */}
-          <details className="text-xs text-[#7a6465] group">
-            <summary className="cursor-pointer font-medium hover:text-[#6F1830] flex items-center gap-1.5 py-1 select-none">
-              <span>Looking for a custom neighborhood or specific station?</span>
+          {/* Optional Custom Neighborhood Dropdown */}
+          <details className="text-xs text-[#7a6465] group pt-1">
+            <summary className="cursor-pointer font-semibold hover:text-[#6F1830] flex items-center gap-1.5 py-1 select-none">
+              <span>Looking for another specific station or custom neighborhood?</span>
               <ChevronDown size={14} className="group-open:rotate-180 transition-transform" />
             </summary>
-            <div className="pt-2 pl-2">
+            <div className="pt-2">
               <select
                 value={locality}
                 onChange={(e) => {
@@ -848,7 +915,7 @@ function PlannerForm({
                   const reg = getCorePujoRegion(e.target.value);
                   if (reg) onSelectRegion(reg.id);
                 }}
-                className="w-full h-11 px-3 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] text-xs font-medium focus:outline-none focus:border-[#6F1830]"
+                className="w-full h-11 px-3.5 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] text-xs font-semibold focus:outline-none focus:border-[#6F1830]"
               >
                 <optgroup label="🚇 Kolkata Metro Stations">
                   {METRO_STATIONS.map((m) => (
@@ -870,314 +937,205 @@ function PlannerForm({
         </div>
       </FormSection>
 
-      {/* Step 2 — Time & Schedule */}
+      {/* Step 2 — Time & Pacing */}
       <FormSection
         number="02"
-        icon={<Clock size={20} />}
-        title="How much time do you have?"
+        icon={<Clock size={22} />}
+        title="Time Available · কতক্ষণ ঘুরবেন"
       >
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
-          {TIME_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              onClick={() => setAvailableMinutes(value)}
-              className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
-                availableMinutes === value
-                  ? "bg-[#6F1830] border-[#6F1830] text-white"
-                  : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-              }`}
-              aria-pressed={availableMinutes === value}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-[#7a6465]" htmlFor="start-time">
-            Target start time:
-          </label>
-          <input
-            id="start-time"
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="h-10 px-3 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] focus:outline-none focus:border-[#6F1830] text-sm"
-          />
+        <div className="space-y-3">
+          <p className="text-xs sm:text-sm text-[#554042]">
+            Choose your comfortable hopping duration. Cholo Bondhu automatically calculates optimal pandal stops, queue buffers, and realistic transit times:
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {STREAMLINED_TIME_OPTIONS.map(({ value, label, labelBn, tagline, desc, icon }) => {
+              const isSelected = availableMinutes === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setAvailableMinutes(value)}
+                  className={`p-4 rounded-2xl border text-left transition-all duration-200 flex items-start gap-3.5 min-h-[58px] ${
+                    isSelected
+                      ? "bg-gradient-to-br from-[#FFFDF9] to-[#FFF5E6] border-[#6F1830] ring-2 ring-[#6F1830]/25 shadow-sm"
+                      : "bg-white border-[rgba(111,24,48,0.15)] text-[#211A1B] hover:border-[#6F1830]/50 hover:bg-[#FFFDF9]/60 shadow-xs"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  <span className="text-2xl mt-0.5 flex-shrink-0" aria-hidden="true">
+                    {icon}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-sm sm:text-base text-[#211A1B]">{label}</span>
+                        <span className="font-bengali text-xs font-bold text-[#6F1830]">({labelBn})</span>
+                      </div>
+                      {isSelected && (
+                        <span className="w-5 h-5 rounded-full bg-[#6F1830] text-white flex items-center justify-center flex-shrink-0">
+                          <Check size={12} strokeWidth={3} />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-[#8B5000] mt-0.5">{tagline}</p>
+                    <p className="text-[11px] text-[#554042] mt-0.5">{desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </FormSection>
 
-      {/* Step 3 — Pandal Themes & Interests */}
+      {/* Step 3 — Pujo Vibe & Amenities */}
       <FormSection
         number="03"
-        icon={<Sliders size={20} />}
-        title="What do you enjoy seeing most?"
+        icon={<Sliders size={22} />}
+        title="Pujo Vibe & Preferences · পছন্দের বিষয় ও সুবিধা"
       >
-        <div className="flex flex-wrap gap-2">
-          {TAGS.map(({ tag, label, emoji }) => (
-            <button
-              key={tag}
-              onClick={() => toggleTag(tag)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
-                selectedTags.includes(tag)
-                  ? "bg-[#6F1830] border-[#6F1830] text-white"
-                  : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-              }`}
-              aria-pressed={selectedTags.includes(tag)}
-            >
-              <span aria-hidden="true">{emoji}</span>
-              {label}
-            </button>
-          ))}
-        </div>
-      </FormSection>
-
-      {/* Step 4 — Transport Mode */}
-      <FormSection
-        number="04"
-        icon={<Navigation2 size={20} />}
-        title="How will you travel?"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {TRANSPORT_OPTIONS.map(({ mode, label, note }) => (
-            <button
-              key={mode}
-              onClick={() => setTransportMode(mode)}
-              className={`flex flex-col text-left px-3.5 py-2.5 rounded-xl border transition-all ${
-                transportMode === mode
-                  ? "bg-[#6F1830] border-[#6F1830] text-white"
-                  : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-              }`}
-              aria-pressed={transportMode === mode}
-            >
-              <span className="font-semibold text-sm">{label}</span>
-              <span className={`text-[11px] mt-0.5 ${transportMode === mode ? "text-white/80" : "text-[#7a6465]"}`}>
-                {note}
-              </span>
-            </button>
-          ))}
-        </div>
-      </FormSection>
-
-      {/* Step 5 — Pacing & Walking Tolerance */}
-      <FormSection
-        number="05"
-        icon={<Footprints size={20} />}
-        title="Pacing, Walking & Physical Comfort"
-      >
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
-            <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
-              Tour Pacing:
+            <label className="block text-xs font-bold text-[#6F1830] uppercase tracking-wider mb-2.5">
+              Select Your Preferred Vibes (Choose one or more):
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {PACING_OPTIONS.map(({ pacing: pVal, label, note }) => (
-                <button
-                  key={pVal}
-                  onClick={() => setPacing(pVal)}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    pacing === pVal
-                      ? "bg-[#6F1830] border-[#6F1830] text-white"
-                      : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-                  }`}
-                  aria-pressed={pacing === pVal}
-                >
-                  <div className="font-semibold text-xs">{label}</div>
-                  <div className={`text-[10px] mt-0.5 ${pacing === pVal ? "text-white/80" : "text-[#7a6465]"}`}>
-                    {note}
-                  </div>
-                </button>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {STREAMLINED_VIBES.map(({ tag, label, labelBn, emoji, desc }) => {
+                const isSelected = selectedTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between min-h-[54px] ${
+                      isSelected
+                        ? "bg-[#6F1830] border-[#6F1830] text-white shadow-sm ring-2 ring-[#6F1830]/20"
+                        : "bg-white border-[rgba(111,24,48,0.15)] text-[#211A1B] hover:border-[#6F1830] hover:bg-[#FFF5E6]/40 shadow-xs"
+                    }`}
+                    aria-pressed={isSelected}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="flex items-center gap-1.5 font-bold text-xs sm:text-sm">
+                          <span>{emoji}</span>
+                          <span>{label}</span>
+                        </div>
+                        {isSelected && (
+                          <Check size={14} className="text-amber-200 flex-shrink-0" />
+                        )}
+                      </div>
+                      <div className={`text-[11px] font-bengali font-semibold ${isSelected ? "text-amber-100" : "text-[#6F1830]"}`}>
+                        {labelBn}
+                      </div>
+                    </div>
+                    <p className={`text-[11px] mt-1 leading-tight ${isSelected ? "text-white/85" : "text-[#554042]"}`}>
+                      {desc}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
-              Walking Tolerance:
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {WALKING_OPTIONS.map(({ tolerance, label, note }) => (
-                <button
-                  key={tolerance}
-                  onClick={() => setWalkingTolerance(tolerance)}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    walkingTolerance === tolerance
-                      ? "bg-[#6F1830] border-[#6F1830] text-white"
-                      : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-                  }`}
-                  aria-pressed={walkingTolerance === tolerance}
-                >
-                  <div className="font-semibold text-xs">{label}</div>
-                  <div className={`text-[10px] mt-0.5 ${walkingTolerance === tolerance ? "text-white/80" : "text-[#7a6465]"}`}>
-                    {note}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Accessibility toggle */}
-          <div className="flex items-center justify-between p-3 rounded-xl bg-[#FFF5E6]/60 border border-[rgba(111,24,48,0.1)]">
-            <div className="flex items-center gap-2.5">
-              <Accessibility size={18} className="text-[#6F1830]" />
-              <div>
-                <span className="text-xs font-semibold text-[#211A1B] block">
-                  Wheelchair / Step-Free Priority
-                </span>
-                <span className="text-[11px] text-[#7a6465]">
-                  Favours pandals with ramp entries (note: barricade diversions may still apply)
-                </span>
-              </div>
-            </div>
-            <button
-              role="switch"
-              aria-checked={requiresAccessibility}
-              onClick={() => setRequiresAccessibility(!requiresAccessibility)}
-              className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
-                requiresAccessibility ? "bg-[#6F1830]" : "bg-[#E8D1C9]"
-              }`}
-              aria-label="Prioritize wheelchair accessible venues"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                  requiresAccessibility ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-      </FormSection>
-
-      {/* Step 6 — Preferred Number of Stops */}
-      <FormSection
-        number="06"
-        icon={<SlidersHorizontal size={20} />}
-        title="Preferred Number of Stops"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[#7a6465]">Stops count target:</span>
-          {[2, 3, 4, 5, 6].map((count) => (
-            <button
-              key={count}
-              onClick={() => setTargetStopCount(count)}
-              className={`w-10 h-10 rounded-xl border text-sm font-bold transition-all ${
-                targetStopCount === count
-                  ? "bg-[#6F1830] border-[#6F1830] text-white"
-                  : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-              }`}
-              aria-pressed={targetStopCount === count}
-            >
-              {count}
-            </button>
-          ))}
-          <span className="text-[11px] text-[#7a6465] ml-2 italic">
-            Engine fits stops to available time budget
-          </span>
-        </div>
-      </FormSection>
-
-      {/* Step 7 — Practical Food Planning */}
-      <FormSection
-        number="07"
-        icon={<Utensils size={20} />}
-        title="Food & Culinary Preferences"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <button
-              role="switch"
-              aria-checked={includeFood}
-              onClick={() => setIncludeFood(!includeFood)}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                includeFood ? "bg-[#6F1830]" : "bg-[#E8D1C9]"
-              }`}
-              aria-label="Include food stops in itinerary"
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                  includeFood ? "translate-x-6" : "translate-x-0"
-                }`}
-              />
-            </button>
-            <span className="text-sm font-medium text-[#3d3032]">
-              {includeFood ? "Yes, include a food stop along the route" : "Skip food stops"}
-            </span>
-          </div>
-
-          {includeFood && (
-            <div className="space-y-3 pt-2 border-t border-[rgba(111,24,48,0.1)]">
-              <div>
-                <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
-                  Cuisine Preferences:
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {FOOD_PREF_CATEGORIES.map(({ category, label }) => (
-                    <button
-                      key={category}
-                      onClick={() => toggleFoodCategory(category)}
-                      className={`text-xs px-3 py-1.5 rounded-xl border transition-all ${
-                        foodCategories.includes(category)
-                          ? "bg-[#6F1830] border-[#6F1830] text-white"
-                          : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-                      }`}
-                      aria-pressed={foodCategories.includes(category)}
-                    >
-                      {label}
-                    </button>
-                  ))}
+          {/* 1-Tap Food and Senior Amenities */}
+          <div className="space-y-3 pt-3 border-t border-[rgba(111,24,48,0.1)]">
+            {/* Food Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-[rgba(111,24,48,0.12)] shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#FFF5E6] text-[#D99B32] flex items-center justify-center font-bold text-lg flex-shrink-0">
+                  ☕
+                </div>
+                <div>
+                  <span className="font-bold text-xs sm:text-sm text-[#211A1B] block">
+                    Include Famous Sweets &amp; Food Stops (মিষ্টি ও খাবার)
+                  </span>
+                  <span className="text-[11px] sm:text-xs text-[#554042]">
+                    Adds verified heritage mishti or Kolkata street food stops along your walking route
+                  </span>
                 </div>
               </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={includeFood}
+                onClick={() => setIncludeFood(!includeFood)}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  includeFood ? "bg-[#6F1830]" : "bg-gray-300"
+                }`}
+                aria-label="Include food stops in itinerary"
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                    includeFood ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-[#7a6465] uppercase tracking-wider mb-2">
-                  Budget Level:
-                </label>
-                <div className="flex items-center gap-2">
-                  {(["any", "budget", "moderate", "premium"] as const).map((b) => (
-                    <button
-                      key={b}
-                      onClick={() => setMaxBudget(b)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
-                        maxBudget === b
-                          ? "bg-[#6F1830] border-[#6F1830] text-white"
-                          : "bg-white border-[rgba(111,24,48,0.2)] text-[#3d3032] hover:border-[#6F1830]"
-                      }`}
-                      aria-pressed={maxBudget === b}
-                    >
-                      {b === "any" ? "Any Budget" : b === "budget" ? "₹ Budget" : b === "moderate" ? "₹₹ Moderate" : "₹₹₹ Premium"}
-                    </button>
-                  ))}
+            {/* Accessibility / Senior Mode Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-white border border-[rgba(111,24,48,0.12)] shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#8B5000] flex items-center justify-center font-bold text-lg flex-shrink-0">
+                  ♿
+                </div>
+                <div>
+                  <span className="font-bold text-xs sm:text-sm text-[#211A1B] block">
+                    Senior &amp; Step-Free Priority (সহজ পরিক্রমা)
+                  </span>
+                  <span className="text-[11px] sm:text-xs text-[#554042]">
+                    Avoids high footbridges and stairs; prioritizes step-free darshan and short paths
+                  </span>
                 </div>
               </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={requiresAccessibility}
+                onClick={() => setRequiresAccessibility(!requiresAccessibility)}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                  requiresAccessibility ? "bg-[#6F1830]" : "bg-gray-300"
+                }`}
+                aria-label="Prioritize senior and wheelchair accessible routes"
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                    requiresAccessibility ? "translate-x-6" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
+          </div>
+        </div>
+      </FormSection>
+
+      {/* Primary Action CTA Button */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={onGenerate}
+          disabled={isGenerating}
+          className="w-full min-h-[56px] sm:min-h-[64px] py-4 px-6 rounded-2xl bg-gradient-to-r from-[#6F1830] via-[#8B2040] to-[#E74732] text-white font-bold text-base sm:text-lg shadow-lg hover:shadow-xl hover:opacity-95 transition-all flex items-center justify-center gap-2.5 cursor-pointer touch-target-min"
+          aria-live="polite"
+          aria-label="Generate personalized itinerary"
+        >
+          {isGenerating ? (
+            <>
+              <div className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+              <span>রুট তৈরি হচ্ছে... Calibrating Optimal Route</span>
+            </>
+          ) : (
+            <>
+              <Sparkles size={20} className="text-amber-200" />
+              <span>তৈরি করুন · Generate My Pujo Route</span>
+              <ArrowRight size={20} />
+            </>
           )}
-        </div>
-      </FormSection>
+        </button>
 
-      {/* Generate CTA */}
-      <button
-        onClick={onGenerate}
-        disabled={isGenerating}
-        className="btn btn-primary w-full py-4 text-base shadow-lg hover:shadow-xl transition-all"
-        aria-live="polite"
-        aria-label="Generate personalized itinerary"
-      >
-        {isGenerating ? (
-          <>
-            <div className="w-5 h-5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-            Optimizing your Puja route…
-          </>
-        ) : (
-          <>
-            Build My Pujo Route
-            <Navigation2 size={18} />
-          </>
-        )}
-      </button>
-
-      <p className="text-xs text-[#7a6465] text-center leading-relaxed">
-        Engine applies deterministic 2-opt tour routing to eliminate unnecessary backtracking.
-        Estimates incorporate festive crowd buffers.
-      </p>
+        <p className="text-xs text-[#554042] text-center mt-3 leading-relaxed">
+          ⚡ 100% offline-ready &amp; account-free. Automatically begins at the designated Metro station.
+        </p>
+      </div>
     </div>
   );
 }
@@ -1211,7 +1169,7 @@ interface ItineraryViewProps {
 function PersonalizationInsightsCard({ diagnostics }: { diagnostics: PlanningDiagnostics }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="card p-4 bg-[#FFF5E6] border border-[#6F1830]/20 space-y-2.5">
+    <div className="card p-4 bg-gradient-to-br from-[#FFFDF9] to-[#FFF5E6] border border-[#6F1830]/20 space-y-2.5">
       <div
         className="flex items-center justify-between cursor-pointer select-none"
         onClick={() => setExpanded(!expanded)}
@@ -1221,41 +1179,35 @@ function PersonalizationInsightsCard({ diagnostics }: { diagnostics: PlanningDia
             ✓
           </div>
           <span className="font-semibold text-xs text-[#211A1B] uppercase tracking-wider">
-            Route Personalization Diagnostics
+            Route Highlights · আপনার রুটের বিশেষ বৈশিষ্ট্য
           </span>
         </div>
         <button
           type="button"
           className="text-xs text-[#6F1830] font-medium flex items-center gap-1 hover:underline"
         >
-          {expanded ? "Hide Details" : "Inspect Influences"}
+          {expanded ? "Hide Details" : "View Highlights"}
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-center">
-        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
-          <div className="text-[10px] text-[#7a6465] uppercase">Origin Anchor</div>
-          <div className="text-xs font-bold text-[#6F1830] truncate" title={`${diagnostics.resolvedOrigin.latitude}, ${diagnostics.resolvedOrigin.longitude}`}>
-            {diagnostics.resolvedOrigin.latitude.toFixed(3)}, {diagnostics.resolvedOrigin.longitude.toFixed(3)}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-center">
+        <div className="bg-white/90 p-2.5 rounded-xl border border-[rgba(111,24,48,0.1)]">
+          <div className="text-[10px] text-[#7a6465] uppercase font-bold tracking-wider">Transit Starting Point</div>
+          <div className="text-xs font-bold text-[#6F1830] mt-0.5">
+            Nearest Metro Corridor
           </div>
         </div>
-        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
-          <div className="text-[10px] text-[#7a6465] uppercase">Candidates Scored</div>
-          <div className="text-xs font-bold text-[#6F1830]">
-            {diagnostics.candidatesScored} venues
+        <div className="bg-white/90 p-2.5 rounded-xl border border-[rgba(111,24,48,0.1)]">
+          <div className="text-[10px] text-[#7a6465] uppercase font-bold tracking-wider">Food &amp; Refreshment</div>
+          <div className="text-xs font-bold text-[#6F1830] mt-0.5 truncate" title={diagnostics.foodHotspotSelected || "None"}>
+            {diagnostics.foodIncluded ? diagnostics.foodHotspotSelected || "Heritage Sweets Included" : "Darshan Only"}
           </div>
         </div>
-        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
-          <div className="text-[10px] text-[#7a6465] uppercase">Routing Engine</div>
-          <div className="text-xs font-bold text-[#6F1830] truncate" title={diagnostics.routingProviderUsed}>
-            {diagnostics.routingProviderUsed.includes("Google") ? "Google Routes API" : "Urban Heuristic (1.6x)"}
-          </div>
-        </div>
-        <div className="bg-white/80 p-2 rounded-lg border border-[rgba(111,24,48,0.1)]">
-          <div className="text-[10px] text-[#7a6465] uppercase">Food Detour</div>
-          <div className="text-xs font-bold text-[#6F1830] truncate" title={diagnostics.foodHotspotSelected || "None"}>
-            {diagnostics.foodIncluded ? diagnostics.foodHotspotSelected || "Included" : "None"}
+        <div className="bg-white/90 p-2.5 rounded-xl border border-[rgba(111,24,48,0.1)] col-span-2 sm:col-span-1">
+          <div className="text-[10px] text-[#7a6465] uppercase font-bold tracking-wider">Route Optimization</div>
+          <div className="text-xs font-bold text-emerald-800 mt-0.5">
+            Verified Walking Paths
           </div>
         </div>
       </div>
@@ -1263,7 +1215,7 @@ function PersonalizationInsightsCard({ diagnostics }: { diagnostics: PlanningDia
       {expanded && (
         <div className="pt-2 border-t border-[rgba(111,24,48,0.12)] space-y-1.5">
           <div className="text-[11px] font-semibold text-[#3d3032]">
-            Preferences that shaped this route:
+            Preferences active for this custom trail:
           </div>
           <ul className="space-y-1 text-xs text-[#523d40]">
             {diagnostics.preferenceInfluences.map((inf, idx) => (
