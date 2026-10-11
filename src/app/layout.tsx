@@ -29,6 +29,12 @@ export const metadata: Metadata = {
     "Bengali culture",
     "চলো বন্ধু",
   ],
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Cholo Bondhu",
+  },
   icons: {
     icon: [
       { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },

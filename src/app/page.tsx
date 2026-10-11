@@ -18,7 +18,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   Heart,
+  Download,
 } from "lucide-react";
+import { InstallAppSection } from "@/components/pwa/InstallAppSection";
 
 export default function HomePage() {
   const stats = getPandalStats();
@@ -52,6 +54,16 @@ export default function HomePage() {
           <BrandLogo onDark size="md" />
           <DesktopNavigation />
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/download"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/15 text-white border border-white/20 hover:bg-white/25 transition-all shadow-2xs min-h-[38px]"
+              title="Download App to Home Screen"
+              aria-label="Download app to your device"
+            >
+              <Download size={14} className="text-[#D99B32]" />
+              <span className="hidden sm:inline">Install App</span>
+              <span className="sm:hidden">Install</span>
+            </Link>
             <SosButton compact />
             <Link href="/plan" className="hidden md:inline-flex btn btn-gold text-sm">
               Plan My Pujo
@@ -378,6 +390,11 @@ export default function HomePage() {
             <ArrowRight size={18} />
           </Link>
         </div>
+      </section>
+
+      {/* ─── DOWNLOAD APP TO DEVICE WITH OUR LOGO ───── */}
+      <section className="max-w-6xl mx-auto px-4 py-10 md:py-14">
+        <InstallAppSection />
       </section>
 
       {/* ─── TRUST & DISCLAIMER SECTION ──────────────── */}
