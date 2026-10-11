@@ -76,7 +76,6 @@ import {
 } from "@/lib/gamification";
 import { ReportFeedbackModal } from "@/components/ui/ReportFeedbackModal";
 import { NoPlanEmptyState } from "@/components/ui/EmptyState";
-import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
 
 const InteractiveMap = dynamic(
@@ -160,7 +159,6 @@ function getPresetIcon(name: string) {
 
 function PlanPageInner() {
   const searchParams = useSearchParams();
-  const { user } = useAuth();
 
   // 10 Dimensions of Planner form state
   // Default region: North Kolkata (starts at Shyambazar Metro Hub)
@@ -454,17 +452,6 @@ function PlanPageInner() {
   function handleSave() {
     if (!itinerary) return;
     savePlan(itinerary);
-    if (user) {
-      fetch("/api/plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: itinerary.id,
-          name: `Pujo Plan — ${new Date().toLocaleDateString("en-IN")}`,
-          itinerary,
-        }),
-      }).catch((err) => console.warn("Background cloud plan save error:", err));
-    }
     setSavedFeedback("saved");
     setTimeout(() => setSavedFeedback(null), 2500);
   }
