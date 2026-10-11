@@ -19,6 +19,7 @@ interface InteractiveMapProps {
   selectedStopId?: string;
   onStopSelect?: (stopId: string) => void;
   className?: string;
+  showBarricadeCaveat?: boolean;
 }
 
 // Default OpenStreetMap tile layer and attribution
@@ -31,6 +32,7 @@ export function InteractiveMap({
   selectedStopId,
   onStopSelect,
   className = "",
+  showBarricadeCaveat = false,
 }: InteractiveMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
@@ -378,8 +380,8 @@ export function InteractiveMap({
   }
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="relative w-full h-full min-h-[300px] overflow-hidden rounded-xl border border-[rgba(111,24,48,0.15)] shadow-inner">
+    <div className={`relative w-full h-full min-h-0 flex flex-col ${className}`}>
+      <div className="relative w-full h-full min-h-0 flex-1 overflow-hidden rounded-xl border border-[rgba(111,24,48,0.15)] shadow-inner">
         {mapState === "loading" && (
           <div className="absolute inset-0 flex items-center justify-center bg-[#FFF5E6] rounded-xl z-10">
             <div className="flex flex-col items-center gap-2">
@@ -390,9 +392,9 @@ export function InteractiveMap({
         )}
 
         {/* Offline Corridor Pre-caching Status Badge */}
-        <div className="absolute top-2.5 left-2.5 z-[400] bg-white/95 backdrop-blur-md border border-[rgba(111,24,48,0.18)] rounded-lg px-2.5 py-1 text-[11px] font-semibold text-[#6F1830] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+        <div className="absolute top-2.5 left-2.5 z-[400] bg-white/95 backdrop-blur-md border border-[rgba(111,24,48,0.18)] rounded-lg px-2.5 py-1 text-[11px] font-semibold text-[#6F1830] shadow-sm flex items-center gap-1.5 pointer-events-auto max-w-[calc(100%-20px)]">
           <Database size={12} className="text-emerald-600 flex-shrink-0" />
-          <span>
+          <span className="truncate">
             Offline Corridors: Shyambazar &amp; Kalighat Cached{" "}
             {cachedTileCount > 0 ? `(${cachedTileCount} tiles)` : "(IndexedDB Active)"}
           </span>
@@ -400,13 +402,16 @@ export function InteractiveMap({
 
         <div
           ref={mapRef}
-          className="w-full h-full min-h-[300px] z-0"
+          className="w-full h-full min-h-0 z-0"
           aria-label="Interactive Durga Puja pandal map"
         />
       </div>
 
-      {/* Kolkata Police Barricade Caveat Banner */}
-      <PoliceBarricadeCaveat />
+      {showBarricadeCaveat && (
+        <div className="mt-2 flex-shrink-0">
+          <PoliceBarricadeCaveat compact />
+        </div>
+      )}
     </div>
   );
 }

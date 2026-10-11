@@ -522,3 +522,23 @@ h4, h5, h6 {
   overflow-x: clip;
 }
 
+/* Hide scrollbar while preserving scroll functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* For Map view, let the map component control internal heights without duplicate outer padding */
+main:has(.map-page-wrapper) {
+  padding-bottom: 0 !important;
+}
+
+/* Ensure Leaflet controls sit neatly at bottom-right of map container */
+.leaflet-bottom.leaflet-right {
+  margin-bottom: 0.5rem !important;
+  margin-right: 0.5rem !important;
+}
+
