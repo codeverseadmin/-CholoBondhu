@@ -3,6 +3,35 @@ import { getServerSession } from "@/lib/auth/session";
 import { getAuthRepository } from "@/lib/db/repository";
 import type { PasswordRequestRecord } from "@/types/auth";
 
+export async function GET(request: Request) {
+  try {
+    const session = await getServerSession(request);
+    if (!session) {
+      return NextResponse.json(
+        { success: false, error: "Authentication required." },
+        { status: 401 }
+      );
+    }
+
+    const repo = getAuthRepository();
+    const all = await repo.listPasswordRequests();
+    const userReq = all
+      .filter((r) => r.userId === session.user.id)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+    return NextResponse.json({
+      success: true,
+      request: userReq || null,
+    });
+  } catch (err: any) {
+    console.error("Fetch password request error:", err);
+    return NextResponse.json(
+      { success: false, error: "Failed to retrieve password request status." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(request);

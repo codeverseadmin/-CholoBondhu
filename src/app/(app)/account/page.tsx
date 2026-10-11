@@ -128,6 +128,7 @@ export default function AccountPage() {
           resetToken: resetToken.trim(),
           otpCode: resetOtp.trim(),
           newPassword,
+          confirmPassword: confirmNewPassword,
         }),
       });
       const data = await res.json();

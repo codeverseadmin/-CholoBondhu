@@ -29,6 +29,7 @@ import {
 import {
   getAuthRepository,
   resetRepositoryForTesting,
+  _resetSingletonForTesting,
 } from "@/lib/db/repository";
 import {
   createSessionForUser,
@@ -422,5 +423,41 @@ describe("7. Password Change Request & Administrator Approval Workflow", () => {
     const updatedUser = await repo.findUserById(user.id);
     expect(await verifyPassword("BrandNewPujaPass2026!", updatedUser!.passwordHash)).toBe(true);
     expect(await verifyPassword("OldPassword123!", updatedUser!.passwordHash)).toBe(false);
+  });
+});
+
+describe("8. Production Database Adapter & Fail-Closed Enforcement", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...originalEnv };
+    _resetSingletonForTesting();
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+    _resetSingletonForTesting();
+  });
+
+  test("Fails closed in production if MONGODB_URI is missing (refuses silent fallback)", () => {
+    delete process.env.MONGODB_URI;
+    delete process.env.DATABASE_URL;
+    delete process.env.JEST_WORKER_ID;
+    (process.env as any).NODE_ENV = "production";
+
+    expect(() => getAuthRepository()).toThrow(
+      /\[FATAL CONFIGURATION ERROR\] MONGODB_URI is required/
+    );
+  });
+
+  test("Selects MongoAuthRepository when MONGODB_URI is provided", () => {
+    process.env.MONGODB_URI = "mongodb://localhost:27017/test_db";
+    delete process.env.JEST_WORKER_ID;
+    (process.env as any).NODE_ENV = "development";
+
+    const repo = getAuthRepository();
+    expect(repo).toBeDefined();
+    expect(repo.constructor.name).toBe("MongoAuthRepository");
   });
 });

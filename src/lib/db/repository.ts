@@ -579,6 +579,12 @@ export function getAuthRepository(): AuthDatabaseRepository {
     if (mongoUri && !process.env.JEST_WORKER_ID) {
       instance = new MongoAuthRepository(mongoUri);
     } else {
+      if (process.env.NODE_ENV === "production" && !process.env.JEST_WORKER_ID) {
+        throw new Error(
+          "[FATAL CONFIGURATION ERROR] MONGODB_URI is required in production environment. " +
+          "Refusing to fall back to ephemeral in-memory storage to prevent silent data loss across serverless invocations."
+        );
+      }
       instance = new MemoryAuthRepository();
     }
   }
@@ -593,4 +599,8 @@ export async function resetRepositoryForTesting(): Promise<void> {
   if (repo.clearAllDataForTesting) {
     await repo.clearAllDataForTesting();
   }
+}
+
+export function _resetSingletonForTesting(): void {
+  instance = null;
 }

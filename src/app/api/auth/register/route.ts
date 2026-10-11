@@ -87,6 +87,19 @@ export async function POST(request: Request) {
     });
   } catch (err: any) {
     console.error("Registration error:", err);
+    if (
+      err?.code === 11000 ||
+      (typeof err?.message === "string" &&
+        (err.message.includes("E11000") || err.message.includes("duplicate key")))
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "An account with this mobile number already exists. Please sign in.",
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { success: false, error: err.message || "Registration failed." },
       { status: 500 }
