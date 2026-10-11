@@ -89,6 +89,28 @@ export const ITINERARY_PRESETS: ItineraryPreset[] = [
     },
   },
   {
+    id: "senior-heritage-walk",
+    name: "সহজ পুজো পরিক্রমা / Senior Heritage Walk",
+    nameBengali: "সহজ পুজো পরিক্রমা (প্রবীণ বান্ধব সাবেকি রুট)",
+    tagline: "Low-walking, step-free morning Sabeki route with wheelchair accessibility",
+    description:
+      "A serene morning route designed for seniors and families. Peaceful morning darshan (08:30 AM), step-free access, zero stampede risk, minimal walking, and traditional North Kolkata Sabeki idols.",
+    iconName: "Heart",
+    preferences: {
+      startingLocality: "North Kolkata",
+      startTime: "08:30",
+      availableMinutes: 180,
+      transportMode: "walking",
+      experienceTags: ["traditional", "heritage", "accessible"],
+      pacing: "relaxed",
+      targetStopCount: 3,
+      walkingTolerance: "low",
+      requiresAccessibility: true,
+      includeFood: true,
+      foodCategories: ["sweets", "bengali_cuisine"],
+    },
+  },
+  {
     id: "food-and-pandal-adventure",
     name: "Food & Pandal Adventure",
     nameBengali: "পুজো পরিক্রমা ও কলকাতার ভোজ",
@@ -188,3 +210,4 @@ export const ITINERARY_PRESETS: ItineraryPreset[] = [
     },
   },
 ];
+

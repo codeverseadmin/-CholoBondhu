@@ -32,6 +32,7 @@ import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { formatTime, formatDuration } from "@/lib/utils";
 import { buildMultiStopNavUrl, buildSingleDestinationNavUrl } from "@/lib/navigation-links";
 import { getNextLevel } from "@/lib/gamification";
+import { PoliceBarricadeCaveat } from "@/components/ui/PoliceBarricadeCaveat";
 
 // ─────────────────────────────────────────────
 // Single Stop Card with Checklist Integration
@@ -247,6 +248,11 @@ export function ItineraryStopCard({
             </a>
           ) : <span />}
 
+          {/* Caveat for pedestrian diversions */}
+          {stop.latitude && stop.longitude && (
+            <PoliceBarricadeCaveat compact className="w-full mt-1 mb-1" />
+          )}
+
           {onReport && (
             <button
               type="button"
@@ -446,15 +452,18 @@ export function MetroOriginNode({
           </div>
 
           {navToStop1Url && (
-            <a
-              href={navToStop1Url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#005EB8] hover:underline min-h-[32px]"
-            >
-              <Navigation size={12} />
-              Directions: Metro Exit → Stop 1
-            </a>
+            <div className="w-full">
+              <a
+                href={navToStop1Url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#005EB8] hover:underline min-h-[32px]"
+              >
+                <Navigation size={12} />
+                Directions: Metro Exit → Stop 1
+              </a>
+              <PoliceBarricadeCaveat compact className="mt-1" />
+            </div>
           )}
         </div>
       </div>
@@ -648,20 +657,23 @@ export function RouteSummary({ itinerary }: RouteSummaryProps) {
       </div>
 
       {multiStopNav && (
-        <div className="pt-2 border-t border-[rgba(111,24,48,0.1)] flex items-center justify-between flex-wrap gap-2">
-          <a
-            href={multiStopNav.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-secondary text-xs py-2 px-3 inline-flex items-center gap-1.5 text-[#6F1830] font-semibold hover:bg-[#FFF5E6]"
-            aria-label="Open multi-stop route directions in external Google Maps"
-          >
-            <Navigation size={13} />
-            Open Full Route in External Google Maps <ExternalLink size={11} />
-          </a>
-          <span className="text-[11px] text-[#7a6465]">
-            Opens Google Maps starting from {itinerary.startingMetro ? itinerary.startingMetro.name : "origin"}
-          </span>
+        <div className="pt-2 border-t border-[rgba(111,24,48,0.1)] space-y-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <a
+              href={multiStopNav.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary text-xs py-2 px-3 inline-flex items-center gap-1.5 text-[#6F1830] font-semibold hover:bg-[#FFF5E6]"
+              aria-label="Open multi-stop route directions in external Google Maps"
+            >
+              <Navigation size={13} />
+              Open Full Route in External Google Maps <ExternalLink size={11} />
+            </a>
+            <span className="text-[11px] text-[#7a6465]">
+              Opens Google Maps starting from {itinerary.startingMetro ? itinerary.startingMetro.name : "origin"}
+            </span>
+          </div>
+          <PoliceBarricadeCaveat />
         </div>
       )}
 

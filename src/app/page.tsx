@@ -17,6 +17,7 @@ import {
   Sparkles,
   ShieldCheck,
   CheckCircle2,
+  Heart,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -129,6 +130,44 @@ export default function HomePage() {
               >
                 <Compass size={18} />
                 Explore {stats.total} Pandals
+              </Link>
+            </div>
+
+            {/* 1-Tap Senior Presets / Elder Mode Toggle */}
+            <div className="mt-8 pt-6 border-t border-white/15">
+              <Link
+                href="/plan?mode=elder"
+                className="group relative block p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-white/15 via-white/10 to-amber-500/20 backdrop-blur-md border-2 border-amber-400/50 hover:border-amber-400 hover:bg-white/20 transition-all duration-300 shadow-lg hover:shadow-amber-500/10 ring-1 ring-white/10"
+                aria-label="সহজ পুজো পরিক্রমা / Senior Heritage Walk - 1-Tap Instant Route"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                  <div className="flex items-start sm:items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl bg-amber-400 text-[#6F1830] flex items-center justify-center font-bold shadow-md flex-shrink-0 group-hover:scale-105 transition-transform">
+                      <Heart className="w-6 h-6 fill-current text-[#6F1830]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bengali text-lg sm:text-xl font-bold text-amber-300">
+                          সহজ পুজো পরিক্রমা
+                        </span>
+                        <span className="text-white/60 text-xs font-semibold uppercase tracking-wider">
+                          / Senior Heritage Walk
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/20 text-amber-200 border border-amber-300/40">
+                          ১-ট্যাপে তৈরি (1-Tap)
+                        </span>
+                      </div>
+                      <p className="text-white/85 text-xs sm:text-sm mt-0.5 leading-relaxed">
+                        প্রবীণ ও পরিবারের জন্য বিশেষ সকালের শান্ত সাবেকি রুট • Low walking, 100% step-free, morning peaceful darshan (8:30 AM). Skips the 10-question questionnaire!
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                    <span className="btn btn-gold text-xs sm:text-sm py-2 px-4 shadow-sm group-hover:bg-amber-300 transition-colors font-bold whitespace-nowrap">
+                      Start Senior Route <ArrowRight size={15} />
+                    </span>
+                  </div>
+                </div>
               </Link>
             </div>
           </div>

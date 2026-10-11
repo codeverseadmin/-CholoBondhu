@@ -7,6 +7,7 @@ import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { isRoutablePandal } from "@/lib/pandal-validator";
 import { cn } from "@/lib/utils";
 import { buildSingleDestinationNavUrl } from "@/lib/navigation-links";
+import { PoliceBarricadeCaveat } from "@/components/ui/PoliceBarricadeCaveat";
 
 const TAG_LABELS: Record<ExperienceTag, string> = {
   iconic: "Iconic",
@@ -288,6 +289,7 @@ export function PandalCard({
                 <Navigation size={12} />
                 Open Directions in Maps
               </a>
+              <PoliceBarricadeCaveat compact className="mt-1" />
             </div>
           )
         ) : (

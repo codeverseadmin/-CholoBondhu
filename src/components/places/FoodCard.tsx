@@ -5,6 +5,7 @@ import type { FoodHotspot } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { cn } from "@/lib/utils";
 import { buildSingleDestinationNavUrl } from "@/lib/navigation-links";
+import { PoliceBarricadeCaveat } from "@/components/ui/PoliceBarricadeCaveat";
 
 const FOOD_CATEGORY_LABELS: Record<string, string> = {
   bengali_cuisine: "Bengali",
@@ -168,6 +169,7 @@ export function FoodCard({
               <Navigation size={11} />
               Open Directions
             </a>
+            <PoliceBarricadeCaveat compact className="mt-1" />
           </div>
         )}
 

@@ -26,6 +26,7 @@ import {
   Info,
   SlidersHorizontal,
   Train,
+  Heart,
 } from "lucide-react";
 import type {
   ItineraryPreferences,
@@ -145,6 +146,7 @@ function getPresetIcon(name: string) {
     case "Utensils": return <Utensils size={16} />;
     case "Camera": return <Camera size={16} />;
     case "Footprints": return <Footprints size={16} />;
+    case "Heart": return <Heart size={16} />;
     default: return <SlidersHorizontal size={16} />;
   }
 }
@@ -194,10 +196,65 @@ function PlanPageInner() {
 
   // View mode: "form" | "itinerary"
   const [view, setView] = useState<"form" | "itinerary">("form");
+  const [isElderMode, setIsElderMode] = useState(false);
 
-  // Handle URL query parameters (?restore=, ?share=, ?add=)
+  // Handle URL query parameters (?mode=elder, ?preset=, ?restore=, ?share=, ?add=)
   useEffect(() => {
     if (!searchParams) return;
+
+    // 1-Tap Elder Mode / Senior Heritage Walk
+    const isElder =
+      searchParams.get("mode") === "elder" ||
+      searchParams.get("preset") === "senior-heritage-walk";
+
+    if (isElder) {
+      setIsElderMode(true);
+      setActivePresetId("senior-heritage-walk");
+
+      const matchedMetro = getMetroStationById("shyambazar") || METRO_STATIONS[1];
+      const coords = matchedMetro
+        ? { latitude: matchedMetro.center.latitude, longitude: matchedMetro.center.longitude }
+        : resolveLocalityCoordinates("North Kolkata");
+
+      const elderPrefs: ItineraryPreferences = {
+        startingLocality: "North Kolkata",
+        startingMetroStationId: matchedMetro?.id,
+        startingMetroStationName: matchedMetro?.name,
+        startingLatitude: coords.latitude,
+        startingLongitude: coords.longitude,
+        availableMinutes: 180,
+        date: new Date().toISOString().split("T")[0],
+        startTime: "08:30",
+        experienceTags: ["traditional", "heritage"],
+        transportMode: "walking",
+        walkingTolerance: "low",
+        requiresAccessibility: true,
+        pacing: "relaxed",
+        targetStopCount: 3,
+        includeFood: true,
+        foodCategories: ["sweets", "bengali_cuisine"],
+      };
+
+      setLocality("North Kolkata");
+      setAvailableMinutes(180);
+      setStartTime("08:30");
+      setSelectedTags(["traditional", "heritage"]);
+      setTransportMode("walking");
+      setWalkingTolerance("low");
+      setRequiresAccessibility(true);
+      setPacing("relaxed");
+      setTargetStopCount(3);
+      setIncludeFood(true);
+      setFoodCategories(["sweets", "bengali_cuisine"]);
+
+      const result = generateItineraryWithDiagnostics(elderPrefs);
+      setItinerary(result.itinerary);
+      setDiagnostics(result.diagnostics);
+      setQuestProgress(loadQuestProgress(result.itinerary));
+      setView("itinerary");
+      return;
+    }
+
     const restoreId = searchParams.get("restore");
     if (restoreId) {
       const saved = getPlanById(restoreId);
@@ -256,6 +313,7 @@ function PlanPageInner() {
 
   function handleApplyPreset(preset: ItineraryPreset) {
     setActivePresetId(preset.id);
+    setIsElderMode(preset.id === "senior-heritage-walk");
     const p = preset.preferences;
     if (p.startingLocality) {
       const matched = LOCALITIES.find((l) => l.toLowerCase().includes(p.startingLocality!.toLowerCase())) || p.startingLocality;
@@ -494,6 +552,7 @@ function PlanPageInner() {
             onToggleStopComplete={handleToggleStopComplete}
             onToggleMetroComplete={handleToggleMetroComplete}
             onResetQuest={handleResetQuest}
+            isElderMode={isElderMode}
           />
         )
       )}
@@ -1009,6 +1068,7 @@ interface ItineraryViewProps {
   onToggleStopComplete?: (stopId: string) => void;
   onToggleMetroComplete?: () => void;
   onResetQuest?: () => void;
+  isElderMode?: boolean;
 }
 
 function PersonalizationInsightsCard({ diagnostics }: { diagnostics: PlanningDiagnostics }) {
@@ -1101,9 +1161,41 @@ function ItineraryView({
   onToggleStopComplete,
   onToggleMetroComplete,
   onResetQuest,
+  isElderMode,
 }: ItineraryViewProps) {
   return (
     <div className="space-y-6">
+      {/* Elder Mode / Senior Heritage Walk Active Banner */}
+      {isElderMode && (
+        <div className="card p-4 sm:p-5 bg-gradient-to-r from-amber-500/15 via-[#FFFDF9] to-amber-500/10 border-2 border-amber-400 rounded-2xl shadow-sm">
+          <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-amber-400 text-[#6F1830] flex items-center justify-center font-bold shadow flex-shrink-0">
+                <Heart className="w-6 h-6 fill-current text-[#6F1830]" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bengali text-lg sm:text-xl font-bold text-[#6F1830]">
+                    সহজ পুজো পরিক্রমা (Elder Mode Active)
+                  </h3>
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    ✓ 100% Step-Free & Low Walking
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-[#523d40] mt-1 leading-relaxed">
+                  সকালের শান্ত বনেদি পরিক্রমা (08:30 AM darshan) • Bagbazar, Kumartuli & Sovabazar heritage shrines • Zero evening stampede risk • Includes Chittaranjan Mishti rest stop.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[#7a6465] bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-2xs font-semibold">
+                Pacing: Relaxed (কম ভিড়)
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Actions bar */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>

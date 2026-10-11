@@ -1,9 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPin, AlertCircle, ExternalLink } from "lucide-react";
+import { MapPin, AlertCircle, ExternalLink, Database } from "lucide-react";
 import type { ItineraryStop } from "@/types";
 import { buildSingleDestinationNavUrl } from "@/lib/navigation-links";
+import {
+  getTileFromIndexedDB,
+  saveTileToIndexedDB,
+  precacheCorridorTiles,
+  getOfflineTileCount,
+} from "@/lib/offline-tiles";
+import { PoliceBarricadeCaveat } from "@/components/ui/PoliceBarricadeCaveat";
 
 const KOLKATA_CENTER: [number, number] = [22.5726, 88.3639];
 
@@ -32,6 +39,27 @@ export function InteractiveMap({
 
   const [mapState, setMapState] = useState<"loading" | "ready" | "fallback">("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [cachedTileCount, setCachedTileCount] = useState<number>(0);
+
+  // Background pre-cache of major corridors (Shyambazar-Kumartuli & Kalighat-Gariahat)
+  useEffect(() => {
+    let isMounted = true;
+    getOfflineTileCount().then((cnt) => {
+      if (isMounted) setCachedTileCount(cnt);
+    });
+
+    precacheCorridorTiles((cached) => {
+      if (isMounted) setCachedTileCount(cached);
+    })
+      .then((res) => {
+        if (isMounted) setCachedTileCount(res.cached);
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Initialize Leaflet map instance
   useEffect(() => {
@@ -64,7 +92,65 @@ export function InteractiveMap({
         const tileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL || DEFAULT_TILE_URL;
         const attribution = process.env.NEXT_PUBLIC_MAP_ATTRIBUTION || DEFAULT_ATTRIBUTION;
 
-        const tileLayer = L.tileLayer(tileUrl, {
+        // Custom Leaflet TileLayer that queries IndexedDB before network fetch
+        const OfflineTileLayer = (L.TileLayer as any).extend({
+          createTile(
+            coords: { z: number; x: number; y: number },
+            done: (err: any, tile: HTMLImageElement) => void
+          ) {
+            const tile = document.createElement("img");
+            tile.setAttribute("role", "presentation");
+            tile.setAttribute("alt", "");
+            tile.crossOrigin = "anonymous";
+
+            const { z, x, y } = coords;
+
+            getTileFromIndexedDB(z, x, y)
+              .then((cachedDataUrl) => {
+                if (cachedDataUrl) {
+                  tile.onload = () => done(null, tile);
+                  tile.onerror = () => {
+                    tile.src = this.getTileUrl(coords);
+                  };
+                  tile.src = cachedDataUrl;
+                } else {
+                  const url = this.getTileUrl(coords);
+                  tile.onload = () => {
+                    // Pre-cache into IndexedDB asynchronously for offline cellular blackout resilience
+                    fetch(url, { mode: "cors" })
+                      .then((res) => (res.ok ? res.blob() : null))
+                      .then((blob) => {
+                        if (!blob) return;
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          if (typeof reader.result === "string") {
+                            saveTileToIndexedDB(z, x, y, reader.result).catch(() => {});
+                          }
+                        };
+                        reader.readAsDataURL(blob);
+                      })
+                      .catch(() => {});
+
+                    done(null, tile);
+                  };
+                  tile.onerror = (err) => {
+                    done(err, tile);
+                  };
+                  tile.src = url;
+                }
+              })
+              .catch(() => {
+                const url = this.getTileUrl(coords);
+                tile.onload = () => done(null, tile);
+                tile.onerror = (err) => done(err, tile);
+                tile.src = url;
+              });
+
+            return tile;
+          },
+        });
+
+        const tileLayer = new OfflineTileLayer(tileUrl, {
           maxZoom: 19,
           attribution,
           subdomains: ["a", "b", "c"],
@@ -222,10 +308,13 @@ export function InteractiveMap({
                 ? `<div style="font-size: 11px; color: #3d3032; margin-top: 2px;">⏱ ~${stop.estimatedVisitMinutes} mins visit</div>`
                 : ""
             }
-            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(111,24,48,0.12); display: flex; justify-content: space-between; align-items: center;">
-              <a href="${navUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: 600; color: #6F1830; text-decoration: none;">
+            <div style="margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(111,24,48,0.12);">
+              <a href="${navUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; font-weight: 600; color: #6F1830; text-decoration: none; display: inline-block;">
                 Directions ↗
               </a>
+              <div style="font-size: 9px; color: #854d0e; background: #fefce8; padding: 3px 5px; border-radius: 4px; border: 1px solid #fef08a; margin-top: 4px; line-height: 1.25;">
+                ⚠️ Police diversions change between afternoon (2-6 PM) and night shifts (6 PM-4 AM).
+              </div>
             </div>
           </div>
         `;
@@ -289,20 +378,35 @@ export function InteractiveMap({
   }
 
   return (
-    <div className={`relative ${className} overflow-hidden rounded-xl border border-[rgba(111,24,48,0.15)]`}>
-      {mapState === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#FFF5E6] rounded-xl z-10">
-          <div className="flex flex-col items-center gap-2">
-            <div className="w-8 h-8 rounded-full border-2 border-[#6F1830] border-t-transparent animate-spin" />
-            <p className="text-xs text-[#7a6465]">Loading interactive map…</p>
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <div className="relative w-full h-full min-h-[300px] overflow-hidden rounded-xl border border-[rgba(111,24,48,0.15)] shadow-inner">
+        {mapState === "loading" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#FFF5E6] rounded-xl z-10">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-8 h-8 rounded-full border-2 border-[#6F1830] border-t-transparent animate-spin" />
+              <p className="text-xs text-[#7a6465]">Loading interactive map…</p>
+            </div>
           </div>
+        )}
+
+        {/* Offline Corridor Pre-caching Status Badge */}
+        <div className="absolute top-2.5 left-2.5 z-[400] bg-white/95 backdrop-blur-md border border-[rgba(111,24,48,0.18)] rounded-lg px-2.5 py-1 text-[11px] font-semibold text-[#6F1830] shadow-sm flex items-center gap-1.5 pointer-events-auto">
+          <Database size={12} className="text-emerald-600 flex-shrink-0" />
+          <span>
+            Offline Corridors: Shyambazar &amp; Kalighat Cached{" "}
+            {cachedTileCount > 0 ? `(${cachedTileCount} tiles)` : "(IndexedDB Active)"}
+          </span>
         </div>
-      )}
-      <div
-        ref={mapRef}
-        className="w-full h-full min-h-[300px] z-0"
-        aria-label="Interactive Durga Puja pandal map"
-      />
+
+        <div
+          ref={mapRef}
+          className="w-full h-full min-h-[300px] z-0"
+          aria-label="Interactive Durga Puja pandal map"
+        />
+      </div>
+
+      {/* Kolkata Police Barricade Caveat Banner */}
+      <PoliceBarricadeCaveat />
     </div>
   );
 }
@@ -401,8 +505,11 @@ export function MapFallback({
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-[rgba(111,24,48,0.1)] text-[11px] text-[#7a6465]">
-        Cholo Bondhu uses OpenStreetMap with zero external API key requirements.
+      <div className="mt-4 pt-3 border-t border-[rgba(111,24,48,0.1)] space-y-2">
+        <PoliceBarricadeCaveat />
+        <div className="text-[11px] text-[#7a6465]">
+          Cholo Bondhu uses OpenStreetMap with zero external API key requirements.
+        </div>
       </div>
     </div>
   );
