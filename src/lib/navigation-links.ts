@@ -171,20 +171,25 @@ export function buildMultiStopNavUrl(
   }
 
   // Determine origin and destination
-  let originCoord: Coordinates;
+  let originCoord: Coordinates & { name?: string; locality?: string };
   let candidateStops: NavigationTarget[];
 
   if (origin && typeof origin.latitude === "number" && typeof origin.longitude === "number") {
     originCoord = origin;
     candidateStops = [...stops];
   } else {
-    originCoord = { latitude: stops[0].latitude, longitude: stops[0].longitude };
+    originCoord = {
+      latitude: stops[0].latitude,
+      longitude: stops[0].longitude,
+      name: stops[0].name,
+      locality: stops[0].locality,
+    };
     candidateStops = stops.slice(1);
   }
 
   if (candidateStops.length === 0) {
     return {
-      url: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatCoordinates(originCoord.latitude, originCoord.longitude))}&travelmode=${travelMode}`,
+      url: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatGoogleMapsDestination(originCoord as NavigationTarget))}&travelmode=${travelMode}`,
       provider: "google_maps",
       travelMode,
       totalStops: 1,

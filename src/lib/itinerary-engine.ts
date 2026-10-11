@@ -170,7 +170,20 @@ export function recalculateTiming(
     const arrivalTime = addMinutes(currentTime, travelMins);
     totalTravel += travelMins;
     totalVisit += stop.estimatedVisitMinutes;
-    currentTime = addMinutes(arrivalTime, stop.estimatedVisitMinutes);
+    const navUrl =
+      stop.latitude && stop.longitude
+        ? buildSingleDestinationNavUrl(
+            {
+              latitude: stop.latitude,
+              longitude: stop.longitude,
+              name: stop.placeName,
+              locality: stop.locality,
+            },
+            undefined,
+            prefs.transportMode
+          )
+        : undefined;
+
     prevLat = stop.latitude;
     prevLng = stop.longitude;
 
@@ -179,19 +192,7 @@ export function recalculateTiming(
       estimatedTravelMinutesFromPrevious: travelMins,
       approximateArrivalTime: arrivalTime,
       routingMethodology: routeRes.methodology,
-      navigationUrl:
-        stop.latitude && stop.longitude
-          ? buildSingleDestinationNavUrl(
-              {
-                latitude: stop.latitude,
-                longitude: stop.longitude,
-                name: stop.placeName,
-                locality: stop.locality,
-              },
-              prevLat && prevLng ? { latitude: prevLat, longitude: prevLng } : undefined,
-              prefs.transportMode
-            )
-          : undefined,
+      navigationUrl: navUrl,
     };
   });
 

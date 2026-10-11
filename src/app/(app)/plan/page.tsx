@@ -55,6 +55,9 @@ import { ITINERARY_PRESETS } from "@/data/presets";
 import {
   KOLKATA_LOCALITIES,
   KOLKATA_METRO_STATIONS,
+  CORE_PUJO_REGIONS,
+  getCorePujoRegion,
+  type CorePujoRegion,
   resolveLocalityCoordinates,
   getMetroStationById,
   getNearestMetroStation,
@@ -159,8 +162,10 @@ function PlanPageInner() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
-  // 10 Dimensions of Planner form state (Defaulting origin to Shyambazar Metro Hub)
-  const [locality, setLocality] = useState(METRO_STATIONS[1]?.name || LOCALITIES[0]);
+  // 10 Dimensions of Planner form state
+  // Default region: North Kolkata (starts at Shyambazar Metro Hub)
+  const [selectedRegionId, setSelectedRegionId] = useState<string>("north_kolkata");
+  const [locality, setLocality] = useState<string>("North Kolkata");
   const [availableMinutes, setAvailableMinutes] = useState(240);
   const [startTime, setStartTime] = useState("10:00");
   const [selectedTags, setSelectedTags] = useState<ExperienceTag[]>(["iconic", "artistic"]);
@@ -198,9 +203,27 @@ function PlanPageInner() {
   const [view, setView] = useState<"form" | "itinerary">("form");
   const [isElderMode, setIsElderMode] = useState(false);
 
-  // Handle URL query parameters (?mode=elder, ?preset=, ?restore=, ?share=, ?add=)
+  function handleSelectRegion(regionId: string) {
+    setSelectedRegionId(regionId);
+    const reg = CORE_PUJO_REGIONS.find((r) => r.id === regionId) || getCorePujoRegion(regionId);
+    if (reg) {
+      setLocality(reg.name);
+    }
+  }
+
+  // Handle URL query parameters (?mode=elder, ?preset=, ?restore=, ?share=, ?add=, ?area=)
   useEffect(() => {
     if (!searchParams) return;
+
+    // Check area or region query param (e.g. ?area=north_kolkata, ?area=south_kolkata, ?area=college_square)
+    const areaQuery = searchParams.get("area") || searchParams.get("region");
+    if (areaQuery) {
+      const reg = getCorePujoRegion(areaQuery);
+      if (reg) {
+        setSelectedRegionId(reg.id);
+        setLocality(reg.name);
+      }
+    }
 
     // 1-Tap Elder Mode / Senior Heritage Walk
     const isElder =
@@ -210,6 +233,7 @@ function PlanPageInner() {
     if (isElder) {
       setIsElderMode(true);
       setActivePresetId("senior-heritage-walk");
+      setSelectedRegionId("north_kolkata");
 
       const matchedMetro = getMetroStationById("shyambazar") || METRO_STATIONS[1];
       const coords = matchedMetro
@@ -316,8 +340,14 @@ function PlanPageInner() {
     setIsElderMode(preset.id === "senior-heritage-walk");
     const p = preset.preferences;
     if (p.startingLocality) {
-      const matched = LOCALITIES.find((l) => l.toLowerCase().includes(p.startingLocality!.toLowerCase())) || p.startingLocality;
-      setLocality(matched);
+      const reg = getCorePujoRegion(p.startingLocality);
+      if (reg) {
+        setSelectedRegionId(reg.id);
+        setLocality(reg.name);
+      } else {
+        const matched = LOCALITIES.find((l) => l.toLowerCase().includes(p.startingLocality!.toLowerCase())) || p.startingLocality;
+        setLocality(matched);
+      }
     }
     if (p.availableMinutes) setAvailableMinutes(p.availableMinutes);
     if (p.startTime) setStartTime(p.startTime);
@@ -346,10 +376,14 @@ function PlanPageInner() {
 
   function handleGenerate() {
     setIsGenerating(true);
-    const matchedMetro = getMetroStationById(locality);
-    const coords = resolveLocalityCoordinates(locality);
+    const matchedRegion = CORE_PUJO_REGIONS.find((r) => r.id === selectedRegionId) || getCorePujoRegion(locality);
+    const matchedMetro =
+      (matchedRegion ? getMetroStationById(matchedRegion.canonicalMetroId) : undefined) ||
+      getMetroStationById(locality);
+    const coords = matchedMetro ? matchedMetro.center : resolveLocalityCoordinates(locality);
+
     const prefs: ItineraryPreferences = {
-      startingLocality: locality,
+      startingLocality: matchedRegion ? matchedRegion.name : locality,
       startingMetroStationId: matchedMetro?.id,
       startingMetroStationName: matchedMetro?.name,
       startingLatitude: coords.latitude,
@@ -502,6 +536,8 @@ function PlanPageInner() {
 
       {view === "form" ? (
         <PlannerForm
+          selectedRegionId={selectedRegionId}
+          onSelectRegion={handleSelectRegion}
           locality={locality}
           setLocality={setLocality}
           availableMinutes={availableMinutes}
@@ -565,6 +601,8 @@ function PlanPageInner() {
 // ─────────────────────────────────────────────
 
 interface PlannerFormProps {
+  selectedRegionId: string;
+  onSelectRegion: (id: string) => void;
   locality: string;
   setLocality: (v: string) => void;
   availableMinutes: number;
@@ -596,6 +634,7 @@ interface PlannerFormProps {
 }
 
 function PlannerForm({
+  selectedRegionId, onSelectRegion,
   locality, setLocality,
   availableMinutes, setAvailableMinutes,
   startTime, setStartTime,
@@ -666,70 +705,181 @@ function PlannerForm({
         </div>
       </div>
 
-      {/* Step 1 — Starting Location */}
+      {/* Step 1 — Puja Area & Starting Metro Navigation */}
       <FormSection
         number="01"
         icon={<MapPin size={20} />}
-        title="Where are you starting?"
+        title="Choose Your Puja Area"
       >
-        <div className="space-y-3">
-          <select
-            value={locality}
-            onChange={(e) => setLocality(e.target.value)}
-            className="w-full h-12 px-4 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] focus:outline-none focus:border-[#6F1830] focus:ring-2 focus:ring-[#6F1830]/20 text-sm font-medium"
-            aria-label="Starting locality or metro station"
-          >
-            <optgroup label="🚇 Kolkata Metro Stations (Fastest Pujo Hopping)">
-              {METRO_STATIONS.map((m) => (
-                <option key={m.id} value={m.name}>
-                  {m.name} ({m.nameBengali})
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="📍 Kolkata Neighbourhoods">
-              {LOCALITIES.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+        <div className="space-y-4">
+          <p className="text-xs text-[#7a6465] leading-relaxed">
+            Choose the area you wish to visit. Our app automatically tells you the specific starting Metro Station, exit gate, and begins your tour navigation from there.
+          </p>
 
-          {/* Metro Station Exit Guidance Card */}
-          {(() => {
-            const metroInfo =
-              getMetroStationById(locality) ||
-              METRO_STATIONS.find(
-                (m) =>
-                  locality.toLowerCase().includes(m.name.toLowerCase()) ||
-                  m.aliases.some((a) => locality.toLowerCase().includes(a))
+          {/* 5 Core Region Selection Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {CORE_PUJO_REGIONS.map((region) => {
+              const isSelected = selectedRegionId === region.id || locality.toLowerCase().includes(region.name.toLowerCase());
+              return (
+                <button
+                  key={region.id}
+                  type="button"
+                  onClick={() => onSelectRegion(region.id)}
+                  className={`p-3.5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between relative group ${
+                    isSelected
+                      ? "bg-gradient-to-br from-[#FFFDF9] to-[#FFF5E6] border-[#6F1830] ring-2 ring-[#6F1830]/20 shadow-md"
+                      : "bg-white border-[rgba(111,24,48,0.15)] hover:border-[#6F1830]/50 hover:bg-[#FFFDF9]/60 shadow-xs"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm shadow-xs ${
+                            isSelected
+                              ? "bg-[#6F1830] text-white"
+                              : "bg-[#6F1830]/10 text-[#6F1830] group-hover:bg-[#6F1830] group-hover:text-white"
+                          } transition-colors`}
+                        >
+                          {region.icon === "Landmark" && <Landmark size={16} />}
+                          {region.icon === "Zap" && <Zap size={16} />}
+                          {region.icon === "Palette" && <Palette size={16} />}
+                          {region.icon === "Users" && <Users size={16} />}
+                          {region.icon === "Train" && <Train size={16} />}
+                        </span>
+                        <div>
+                          <h3 className="font-bold text-sm text-[#211A1B] leading-tight">
+                            {region.name}
+                          </h3>
+                          <span className="font-bengali text-xs text-[#6F1830] font-semibold">
+                            {region.nameBengali}
+                          </span>
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span className="w-5 h-5 rounded-full bg-[#6F1830] text-white flex items-center justify-center shadow-xs">
+                          <Check size={12} strokeWidth={3} />
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-[#7a6465] line-clamp-2 mt-1 leading-snug">
+                      {region.tagline}
+                    </p>
+                  </div>
+
+                  {/* Assigned Metro Hub Preview Chip */}
+                  <div className="mt-3 pt-2.5 border-t border-[rgba(111,24,48,0.08)] flex items-center justify-between text-[11px]">
+                    <span className="inline-flex items-center gap-1 font-semibold text-[#005EB8] truncate">
+                      <Train size={12} className={region.metroLineCode === "blue" ? "text-[#005EB8]" : "text-[#009639]"} />
+                      <span>{region.canonicalMetroName}</span>
+                    </span>
+                    <span className="text-[10px] text-[#7a6465] font-medium bg-[#FFF5E6] px-1.5 py-0.5 rounded border border-[#D99B32]/30 flex-shrink-0">
+                      Starts Here
+                    </span>
+                  </div>
+                </button>
               );
-            if (!metroInfo) return null;
+            })}
+          </div>
+
+          {/* Active Assigned Metro Station Guidance Banner */}
+          {(() => {
+            const activeRegion = CORE_PUJO_REGIONS.find((r) => r.id === selectedRegionId) ||
+              getCorePujoRegion(locality) ||
+              CORE_PUJO_REGIONS[0];
+
             return (
-              <div className="p-3 bg-[#FFF5E6] rounded-xl border border-[#D99B32]/40 text-xs space-y-1">
-                <div className="flex items-center justify-between flex-wrap gap-1">
-                  <span className="font-semibold text-[#6F1830] flex items-center gap-1.5">
-                    <Train size={14} className="text-[#005EB8]" />
-                    <span>{metroInfo.name}</span>
-                  </span>
-                  <span className="text-[10px] uppercase font-bold text-[#7a6465] px-2 py-0.5 rounded-full bg-white border border-[rgba(111,24,48,0.1)]">
-                    {metroInfo.line}
+              <div className="p-4 bg-gradient-to-br from-[#FFF9F0] to-[#FFF5E6] rounded-2xl border-2 border-[#D99B32]/50 shadow-sm space-y-2.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg bg-[#005EB8] text-white flex items-center justify-center shadow-xs">
+                      <Train size={15} />
+                    </span>
+                    <div>
+                      <span className="text-xs uppercase font-bold tracking-wider text-[#7a6465]">
+                        Assigned Starting Point
+                      </span>
+                      <h4 className="font-bold text-sm text-[#6F1830] flex items-center gap-1.5">
+                        <span>{activeRegion.canonicalMetroName}</span>
+                        <span className="font-bengali text-xs text-[#7a6465] font-normal">
+                          ({activeRegion.canonicalMetroNameBengali})
+                        </span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-white shadow-xs ${
+                    activeRegion.metroLineCode === "blue" ? "bg-[#005EB8]" : "bg-[#009639]"
+                  }`}>
+                    {activeRegion.metroLineName}
                   </span>
                 </div>
-                <p className="text-[#3d3032] flex items-start gap-1.5 pt-1">
-                  <Footprints size={13} className="text-[#D99B32] flex-shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Exit Guidance:</strong> {metroInfo.gateGuidance}
-                  </span>
-                </p>
-                {metroInfo.popularNearbyPandals.length > 0 && (
-                  <p className="text-[11px] text-[#7a6465] pt-0.5">
-                    Nearby major pandals: {metroInfo.popularNearbyPandals.join(" · ")}
-                  </p>
-                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1 text-xs text-[#3d3032]">
+                  <div className="flex items-start gap-2 bg-white/80 p-2.5 rounded-xl border border-[rgba(111,24,48,0.08)]">
+                    <Footprints size={15} className="text-[#D99B32] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-[#211A1B] block text-[11px] uppercase tracking-wide">
+                        Station Exit & Turnout
+                      </strong>
+                      <span className="text-[#3d3032]">{activeRegion.gateGuidance}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 bg-white/80 p-2.5 rounded-xl border border-[rgba(111,24,48,0.08)]">
+                    <Navigation2 size={15} className="text-[#6F1830] flex-shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-[#211A1B] block text-[11px] uppercase tracking-wide">
+                        Turn-by-Turn Navigation
+                      </strong>
+                      <span className="text-[#7a6465]">{activeRegion.startingCorridorDescription}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-[11px] text-[#7a6465] pt-0.5">
+                  <span className="font-semibold text-[#6F1830]">Featured pandals in this route:</span>
+                  <span>{activeRegion.popularPandals.join(" · ")}</span>
+                </div>
               </div>
             );
           })()}
+
+          {/* Optional Advanced Override Collapsible */}
+          <details className="text-xs text-[#7a6465] group">
+            <summary className="cursor-pointer font-medium hover:text-[#6F1830] flex items-center gap-1.5 py-1 select-none">
+              <span>Looking for a custom neighborhood or specific station?</span>
+              <ChevronDown size={14} className="group-open:rotate-180 transition-transform" />
+            </summary>
+            <div className="pt-2 pl-2">
+              <select
+                value={locality}
+                onChange={(e) => {
+                  setLocality(e.target.value);
+                  const reg = getCorePujoRegion(e.target.value);
+                  if (reg) onSelectRegion(reg.id);
+                }}
+                className="w-full h-11 px-3 rounded-xl border border-[rgba(111,24,48,0.2)] bg-white text-[#211A1B] text-xs font-medium focus:outline-none focus:border-[#6F1830]"
+              >
+                <optgroup label="🚇 Kolkata Metro Stations">
+                  {METRO_STATIONS.map((m) => (
+                    <option key={m.id} value={m.name}>
+                      {m.name} ({m.nameBengali})
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="📍 Kolkata Neighbourhoods">
+                  {LOCALITIES.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </div>
+          </details>
         </div>
       </FormSection>
 

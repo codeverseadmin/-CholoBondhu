@@ -559,20 +559,20 @@ export function resolveLocalityCoordinates(
   }
 
   // 4. Substring heuristics
+  if (query.includes("college square") || query.includes("college-square") || query.includes("college_square")) {
+    return KOLKATA_METRO_STATIONS.find((m) => m.id === "metro-mg-road")?.center || { latitude: 22.5802, longitude: 88.3601 };
+  }
   if (query.includes("north") || query.includes("shyam") || query.includes("kumar") || query.includes("bagbazar")) {
     return KOLKATA_METRO_STATIONS[1].center; // Shyambazar Metro
   }
-  if (query.includes("kalighat") || query.includes("rashbehari") || query.includes("deshapriya")) {
-    return KOLKATA_METRO_STATIONS[11].center; // Kalighat Metro
+  if (query.includes("kalighat") || query.includes("rashbehari") || query.includes("deshapriya") || query.includes("south")) {
+    return KOLKATA_METRO_STATIONS.find((m) => m.id === "metro-kalighat")?.center || { latitude: 22.5198, longitude: 88.3467 };
   }
-  if (query.includes("salt lake") || query.includes("karunamoyee") || query.includes("east")) {
-    return KOLKATA_METRO_STATIONS[17].center; // Karunamoyee Metro
+  if (query.includes("salt lake") || query.includes("karunamoyee") || query.includes("new town") || query.includes("newtown") || query.includes("east")) {
+    return KOLKATA_METRO_STATIONS.find((m) => m.id === "metro-karunamoyee")?.center || { latitude: 22.5866, longitude: 88.4192 };
   }
   if (query.includes("behala") || query.includes("naktala") || query.includes("tolly")) {
     return KOLKATA_METRO_STATIONS[13].center; // Tollygunge / Mahanayak Metro
-  }
-  if (query.includes("south") || query.includes("ballygunge") || query.includes("gariahat")) {
-    return KOLKATA_LOCALITIES[3].center; // Ballygunge
   }
   if (query.includes("sealdah")) {
     return KOLKATA_METRO_STATIONS[15].center; // Sealdah Metro
@@ -591,5 +591,134 @@ export function getZoneFromCoordinates(lat: number, lng: number): KolkataZone {
   if (lat < 22.50) return "south_west";
   if (lat < 22.54) return "south";
   return "central";
+}
+
+// ─────────────────────────────────────────────
+// 5 CORE PUJO REGIONS (Primary Area Selection Flow)
+// ─────────────────────────────────────────────
+
+export interface CorePujoRegion {
+  id: "north_kolkata" | "central_kolkata" | "college_square" | "south_kolkata" | "newtown_area";
+  name: string;
+  nameBengali: string;
+  tagline: string;
+  taglineBengali: string;
+  canonicalMetroId: string;
+  canonicalMetroName: string;
+  canonicalMetroNameBengali: string;
+  metroLineCode: "blue" | "green";
+  metroLineName: string;
+  gateGuidance: string;
+  startingCorridorDescription: string;
+  popularPandals: string[];
+  icon: "Landmark" | "Zap" | "Palette" | "Users" | "Train";
+  accentColor: string;
+}
+
+export const CORE_PUJO_REGIONS: CorePujoRegion[] = [
+  {
+    id: "north_kolkata",
+    name: "North Kolkata",
+    nameBengali: "উত্তর কলকাতা",
+    tagline: "Sabeki Rajbari Heritage & Kumartuli Lanes",
+    taglineBengali: "শতবর্ষের সাবেকি বনেদি পুজো ও কুমোরটুলির অলিগলি",
+    canonicalMetroId: "metro-shyambazar",
+    canonicalMetroName: "Shyambazar Metro (Blue Line)",
+    canonicalMetroNameBengali: "শ্যামবাজার মেট্রো",
+    metroLineCode: "blue",
+    metroLineName: "Blue Line (North-South)",
+    gateGuidance: "Gate 1 (Bhupen Bose Ave / 5-Point Crossing Exit)",
+    startingCorridorDescription: "Direct walking corridor to Bagbazar Sarbojanin, Kumartuli Park, and Sovabazar Rajbari.",
+    popularPandals: ["Bagbazar Sarbojanin", "Kumartuli Park", "Jagat Mukherjee Park", "Tala Prattoy"],
+    icon: "Landmark",
+    accentColor: "#6F1830",
+  },
+  {
+    id: "central_kolkata",
+    name: "Central Kolkata",
+    nameBengali: "মধ্য কলকাতা",
+    tagline: "Grand Light Art, Bowbazar & Cultural Hubs",
+    taglineBengali: "ঐতিহাসিক চাঁদনি-বউবাজার ও রাজকীয় আলোকসজ্জা",
+    canonicalMetroId: "metro-esplanade",
+    canonicalMetroName: "Esplanade Metro Interchange",
+    canonicalMetroNameBengali: "এসপ্ল্যানেড মেট্রো ইন্টারচেঞ্জ",
+    metroLineCode: "blue",
+    metroLineName: "Blue & Green Line Hub",
+    gateGuidance: "Gate 5 (Jawaharlal Nehru Road / New Market Exit)",
+    startingCorridorDescription: "Central interchange to Janbazar Sarbojanin, Bowbazar, and cultural festival routes.",
+    popularPandals: ["Janbazar Sarbojanin", "Bowbazar Sarbojanin", "Simla Bayam Samity", "Park Circus"],
+    icon: "Zap",
+    accentColor: "#D99B32",
+  },
+  {
+    id: "college_square",
+    name: "College Square Area",
+    nameBengali: "কলেজ স্কোয়ার চত্বর",
+    tagline: "Water Mirroring, Laser Shows & Boi Para",
+    taglineBengali: "জলে ভাসা আলোর প্রতিচ্ছবি ও সন্তোষ মিত্র স্কোয়ার",
+    canonicalMetroId: "metro-mg-road",
+    canonicalMetroName: "MG Road Metro (Blue Line)",
+    canonicalMetroNameBengali: "মহাত্মা গান্ধী রোড মেট্রো",
+    metroLineCode: "blue",
+    metroLineName: "Blue Line (North-South)",
+    gateGuidance: "Gate 1 (College Street / CR Avenue Crossing Exit)",
+    startingCorridorDescription: "Direct pedestrian approach to College Square lake illuminations, Mohammed Ali Park, and Santosh Mitra Square.",
+    popularPandals: ["College Square", "Santosh Mitra Square", "Mohammed Ali Park", "Thanthania Kalibari"],
+    icon: "Palette",
+    accentColor: "#005EB8",
+  },
+  {
+    id: "south_kolkata",
+    name: "South Kolkata",
+    nameBengali: "দক্ষিণ কলকাতা",
+    tagline: "Mega-Themed Pandals & Immersive Art Installations",
+    taglineBengali: "বিশাল থিম যুদ্ধ, আলোকধারা ও স্থাপত্যের মহোৎসব",
+    canonicalMetroId: "metro-kalighat",
+    canonicalMetroName: "Kalighat Metro (Blue Line)",
+    canonicalMetroNameBengali: "কালীঘাট মেট্রো",
+    metroLineCode: "blue",
+    metroLineName: "Blue Line (North-South)",
+    gateGuidance: "Gate 3 (Southern Ave / Rashbehari Crossing Exit)",
+    startingCorridorDescription: "Immediate walking access to Deshapriya Park, Tridhara Sammilani, Mudiali, and Badamtala.",
+    popularPandals: ["Deshapriya Park", "Tridhara Sammilani", "Mudiali Club", "Badamtala Ashar Sangha", "Ekdalia Evergreen"],
+    icon: "Users",
+    accentColor: "#8B2040",
+  },
+  {
+    id: "newtown_area",
+    name: "New Town Area",
+    nameBengali: "নিউ টাউন ও সল্টলেক",
+    tagline: "Futuristic Themes, Wide Avenues & Sreebhumi",
+    taglineBengali: "শ্রীভূমি বুর্জ খলিফা ট্রেইল ও সল্টলেক ব্লকের উৎসব",
+    canonicalMetroId: "metro-karunamoyee",
+    canonicalMetroName: "Karunamoyee Metro (Green Line)",
+    canonicalMetroNameBengali: "করুণাময়ী মেট্রো",
+    metroLineCode: "green",
+    metroLineName: "Green Line (East-West)",
+    gateGuidance: "Gate 1 (Karunamoyee Central Bus Station Exit)",
+    startingCorridorDescription: "Fast transit to Salt Lake FD Block, BJ Block, Central Park, and New Town Sarbojanin.",
+    popularPandals: ["FD Block Salt Lake", "BJ Block Salt Lake", "New Town Sarbojanin", "Sreebhumi Clock Tower"],
+    icon: "Train",
+    accentColor: "#009639",
+  },
+];
+
+export function getCorePujoRegion(idOrQuery?: string): CorePujoRegion | undefined {
+  if (!idOrQuery) return undefined;
+  const q = idOrQuery.toLowerCase().trim();
+  return CORE_PUJO_REGIONS.find(
+    (r) =>
+      r.id === q ||
+      r.name.toLowerCase() === q ||
+      r.name.toLowerCase().includes(q) ||
+      q.includes(r.id.replace("_", " ")) ||
+      q.includes(r.id.replace("_", "-")) ||
+      (q.includes("college") && r.id === "college_square") ||
+      (q.includes("new town") && r.id === "newtown_area") ||
+      (q.includes("newtown") && r.id === "newtown_area") ||
+      (q.includes("north") && r.id === "north_kolkata") ||
+      (q.includes("central") && r.id === "central_kolkata") ||
+      (q.includes("south") && !q.includes("south-west") && !q.includes("south_west") && r.id === "south_kolkata")
+  );
 }
 

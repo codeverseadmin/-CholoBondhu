@@ -62,7 +62,7 @@ export const FOOD_HOTSPOT_DATA: FoodHotspot[] = [
   },
   {
     id: "chittaranjan-mishti",
-    name: "Chittaranjan German Mishti",
+    name: "Chittaranjan Mistanna Bhandar",
     nameBengali: "চিত্তরঞ্জন মিষ্টান্ন ভাণ্ডার",
     locality: "Shyambazar",
     address: "34B, Shobhabazar St, near Shyambazar Metro, Kolkata 700005",
@@ -70,7 +70,7 @@ export const FOOD_HOTSPOT_DATA: FoodHotspot[] = [
     longitude: 88.3688,
     foodCategory: ["sweets", "bengali_cuisine"],
     description:
-      "Renowned purveyor of ethereal, spongy, pure white chhana Rosogolla and delicate Madhuparka sandesh since 1907. An essential sweet stop on the North route.",
+      "Renowned purveyor of ethereal, spongy, pure white chhana Rosogolla and delicate Madhuparka sandesh since 1907 (famed for German mishti). An essential sweet stop on the North route.",
     seasonal: false,
     temporary: false,
     verificationStatus: "curated",

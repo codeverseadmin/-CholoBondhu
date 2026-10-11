@@ -170,6 +170,43 @@ export default function HomePage() {
                 </div>
               </Link>
             </div>
+
+            {/* Quick Area-First Pujo Hopping Selector */}
+            <div className="mt-4 pt-3 flex flex-wrap items-center gap-2">
+              <span className="text-white/70 text-xs font-semibold uppercase tracking-wider">
+                Choose Area:
+              </span>
+              <Link
+                href="/plan?area=north_kolkata"
+                className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all hover:scale-105"
+              >
+                🏛️ North Kolkata
+              </Link>
+              <Link
+                href="/plan?area=central_kolkata"
+                className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all hover:scale-105"
+              >
+                ⚡ Central Kolkata
+              </Link>
+              <Link
+                href="/plan?area=college_square"
+                className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all hover:scale-105"
+              >
+                🎨 College Square
+              </Link>
+              <Link
+                href="/plan?area=south_kolkata"
+                className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all hover:scale-105"
+              >
+                🌺 South Kolkata
+              </Link>
+              <Link
+                href="/plan?area=newtown_area"
+                className="px-3 py-1 rounded-full text-xs font-semibold bg-white/15 hover:bg-white/25 text-white border border-white/20 transition-all hover:scale-105"
+              >
+                🚇 New Town Area
+              </Link>
+            </div>
           </div>
         </div>
 
