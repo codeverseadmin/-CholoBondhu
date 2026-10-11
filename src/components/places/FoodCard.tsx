@@ -4,6 +4,7 @@ import { Utensils, MapPin, Clock, Tag, Navigation } from "lucide-react";
 import type { FoodHotspot } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { cn } from "@/lib/utils";
+import { buildSingleDestinationNavUrl } from "@/lib/navigation-links";
 
 const FOOD_CATEGORY_LABELS: Record<string, string> = {
   bengali_cuisine: "Bengali",
@@ -152,7 +153,13 @@ export function FoodCard({
         {food.latitude && food.longitude && (
           <div className="mb-2">
             <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${food.latitude},${food.longitude}`}
+              href={buildSingleDestinationNavUrl({
+                latitude: food.latitude,
+                longitude: food.longitude,
+                name: food.name,
+                locality: food.locality,
+                address: food.address,
+              })}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline"

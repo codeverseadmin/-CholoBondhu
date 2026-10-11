@@ -193,7 +193,12 @@ export function InteractiveMap({
         // External directions link without API keys
         const navUrl =
           stop.navigationUrl ||
-          buildSingleDestinationNavUrl({ latitude: lat, longitude: lng });
+          buildSingleDestinationNavUrl({
+            latitude: lat,
+            longitude: lng,
+            name: stop.placeName,
+            locality: stop.locality,
+          });
 
         // Popup content
         const popupHtml = `
@@ -377,6 +382,8 @@ export function MapFallback({
                         buildSingleDestinationNavUrl({
                           latitude: stop.latitude,
                           longitude: stop.longitude,
+                          name: stop.placeName,
+                          locality: stop.locality,
                         })
                       }
                       target="_blank"

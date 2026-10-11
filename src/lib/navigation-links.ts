@@ -13,6 +13,8 @@ export interface NavigationTarget {
   latitude: number;
   longitude: number;
   name?: string;
+  locality?: string;
+  address?: string;
 }
 
 export interface MultiStopNavResult {
@@ -51,25 +53,75 @@ export function formatCoordinates(lat: number, lng: number): string {
 }
 
 /**
+ * Formats a navigation target into an authoritative Google Maps destination query.
+ * - When a place name is present, builds a localized query (e.g. "Ekdalia Evergreen Club, Gariahat, Kolkata")
+ *   which instructs Google Maps Knowledge Graph to resolve the official Place POI,
+ *   including opening hours, verified entrance gates, and pedestrian walkways,
+ *   rather than dropping an anonymous GPS pin on an adjacent alley or behind boundary walls.
+ * - When name is omitted, falls back safely to exact coordinate numbers (lat,lng).
+ */
+export function formatGoogleMapsDestination(target: NavigationTarget): string {
+  if (target.name && target.name.trim().length > 0) {
+    const parts: string[] = [target.name.trim()];
+    if (
+      target.locality &&
+      target.locality.trim().length > 0 &&
+      !target.name.toLowerCase().includes(target.locality.toLowerCase())
+    ) {
+      parts.push(target.locality.trim());
+    }
+    const combined = parts.join(", ").toLowerCase();
+    if (!combined.includes("kolkata") && !combined.includes("calcutta")) {
+      parts.push("Kolkata");
+    }
+    return parts.join(", ");
+  }
+  return formatCoordinates(target.latitude, target.longitude);
+}
+
+/**
+ * Formats an origin into an authoritative Google Maps origin query.
+ */
+export function formatGoogleMapsOrigin(
+  origin: Coordinates | (Coordinates & { name?: string; locality?: string })
+): string {
+  if ((origin as any).name && (origin as any).name.trim().length > 0) {
+    const parts: string[] = [(origin as any).name.trim()];
+    if (
+      (origin as any).locality &&
+      !(origin as any).name.toLowerCase().includes((origin as any).locality.toLowerCase())
+    ) {
+      parts.push((origin as any).locality.trim());
+    }
+    const combined = parts.join(", ").toLowerCase();
+    if (!combined.includes("kolkata") && !combined.includes("calcutta")) {
+      parts.push("Kolkata");
+    }
+    return parts.join(", ");
+  }
+  return formatCoordinates(origin.latitude, origin.longitude);
+}
+
+/**
  * Generates an external Google Maps Directions URL for a single destination.
  * Requires zero API keys or external credentials.
  *
- * @param destination Target coordinate (with optional name)
- * @param origin Optional user origin coordinate
+ * @param destination Target coordinate (with optional name & locality)
+ * @param origin Optional user origin coordinate (with optional name & locality)
  * @param mode Desired transport mode
  */
 export function buildSingleDestinationNavUrl(
   destination: NavigationTarget,
-  origin?: Coordinates,
+  origin?: Coordinates | (Coordinates & { name?: string; locality?: string }),
   mode: TransportMode = "walking"
 ): string {
   const travelMode = mapToGoogleTravelMode(mode);
-  const destParam = formatCoordinates(destination.latitude, destination.longitude);
+  const destParam = formatGoogleMapsDestination(destination);
 
   let url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destParam)}&travelmode=${travelMode}`;
 
   if (origin && typeof origin.latitude === "number" && typeof origin.longitude === "number") {
-    const originParam = formatCoordinates(origin.latitude, origin.longitude);
+    const originParam = formatGoogleMapsOrigin(origin);
     url += `&origin=${encodeURIComponent(originParam)}`;
   }
 
@@ -150,8 +202,8 @@ export function buildMultiStopNavUrl(
   const isTruncated = intermediaryCandidates.length > MAX_GOOGLE_MAPS_WAYPOINTS;
   const waypointsToInclude = intermediaryCandidates.slice(0, MAX_GOOGLE_MAPS_WAYPOINTS);
 
-  const originStr = formatCoordinates(originCoord.latitude, originCoord.longitude);
-  const destStr = formatCoordinates(finalStop.latitude, finalStop.longitude);
+  const originStr = formatGoogleMapsOrigin(originCoord);
+  const destStr = formatGoogleMapsDestination(finalStop);
 
   let url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originStr)}&destination=${encodeURIComponent(destStr)}&travelmode=${travelMode}`;
 
@@ -188,5 +240,5 @@ export function buildLegNavUrl(
   to: NavigationTarget,
   mode: TransportMode = "walking"
 ): string {
-  return buildSingleDestinationNavUrl(to, { latitude: from.latitude, longitude: from.longitude }, mode);
+  return buildSingleDestinationNavUrl(to, from, mode);
 }

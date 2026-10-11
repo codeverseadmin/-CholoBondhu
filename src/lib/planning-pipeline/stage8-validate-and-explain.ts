@@ -17,6 +17,7 @@ import type {
 import { nanoid } from "@/lib/utils";
 import type { RoutingProvider } from "@/lib/routing-provider";
 import { defaultRoutingProvider, getExternalNavigationUrl } from "@/lib/routing-provider";
+import { buildSingleDestinationNavUrl } from "@/lib/navigation-links";
 import type {
   NormalizedPlannerInput,
   PlanningDiagnostics,
@@ -206,11 +207,15 @@ export function validateAndExplainResult(
         routingMethodology: foodRouting.methodology,
         navigationUrl:
           foodHotspot.latitude && foodHotspot.longitude
-            ? getExternalNavigationUrl(
-                foodHotspot.latitude,
-                foodHotspot.longitude,
-                prevLat,
-                prevLng,
+            ? buildSingleDestinationNavUrl(
+                {
+                  latitude: foodHotspot.latitude,
+                  longitude: foodHotspot.longitude,
+                  name: foodHotspot.name,
+                  locality: foodHotspot.locality,
+                  address: foodHotspot.address,
+                },
+                prevLat && prevLng ? { latitude: prevLat, longitude: prevLng } : undefined,
                 input.transportMode
               )
             : undefined,
@@ -312,11 +317,15 @@ export function validateAndExplainResult(
       routingMethodology: routingRes.methodology,
       navigationUrl:
         pandal.latitude && pandal.longitude
-          ? getExternalNavigationUrl(
-              pandal.latitude,
-              pandal.longitude,
-              prevLat,
-              prevLng,
+          ? buildSingleDestinationNavUrl(
+              {
+                latitude: pandal.latitude,
+                longitude: pandal.longitude,
+                name: pandal.name,
+                locality: pandal.locality || pandal.area,
+                address: pandal.address,
+              },
+              prevLat && prevLng ? { latitude: prevLat, longitude: prevLng } : undefined,
               input.transportMode
             )
           : undefined,
@@ -366,11 +375,15 @@ export function validateAndExplainResult(
       routingMethodology: foodRouting.methodology,
       navigationUrl:
         foodHotspot.latitude && foodHotspot.longitude
-          ? getExternalNavigationUrl(
-              foodHotspot.latitude,
-              foodHotspot.longitude,
-              prevLat,
-              prevLng,
+          ? buildSingleDestinationNavUrl(
+              {
+                latitude: foodHotspot.latitude,
+                longitude: foodHotspot.longitude,
+                name: foodHotspot.name,
+                locality: foodHotspot.locality,
+                address: foodHotspot.address,
+              },
+              prevLat && prevLng ? { latitude: prevLat, longitude: prevLng } : undefined,
               input.transportMode
             )
           : undefined,

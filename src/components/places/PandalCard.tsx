@@ -6,6 +6,7 @@ import type { PandalPlace, ExperienceTag } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { isRoutablePandal } from "@/lib/pandal-validator";
 import { cn } from "@/lib/utils";
+import { buildSingleDestinationNavUrl } from "@/lib/navigation-links";
 
 const TAG_LABELS: Record<ExperienceTag, string> = {
   iconic: "Iconic",
@@ -272,7 +273,13 @@ export function PandalCard({
           pandal.latitude && pandal.longitude && (
             <div className="mb-3">
               <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${pandal.latitude},${pandal.longitude}`}
+                href={buildSingleDestinationNavUrl({
+                  latitude: pandal.latitude,
+                  longitude: pandal.longitude,
+                  name: pandal.name,
+                  locality: pandal.locality || pandal.area,
+                  address: pandal.address,
+                })}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-[#6F1830] hover:text-[#8B2040] hover:underline"

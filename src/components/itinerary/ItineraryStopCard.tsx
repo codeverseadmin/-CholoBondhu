@@ -30,7 +30,7 @@ import type {
 } from "@/types";
 import { ConfidenceBadge } from "@/components/ui/ConfidenceBadge";
 import { formatTime, formatDuration } from "@/lib/utils";
-import { buildMultiStopNavUrl } from "@/lib/navigation-links";
+import { buildMultiStopNavUrl, buildSingleDestinationNavUrl } from "@/lib/navigation-links";
 import { getNextLevel } from "@/lib/gamification";
 
 // ─────────────────────────────────────────────
@@ -229,7 +229,12 @@ export function ItineraryStopCard({
             <a
               href={
                 stop.navigationUrl ||
-                `https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`
+                buildSingleDestinationNavUrl({
+                  latitude: stop.latitude,
+                  longitude: stop.longitude,
+                  name: stop.placeName,
+                  locality: stop.locality,
+                })
               }
               target="_blank"
               rel="noopener noreferrer"
@@ -336,7 +341,20 @@ export function MetroOriginNode({
 
   const navToStop1Url =
     firstStop?.latitude && firstStop?.longitude
-      ? `https://www.google.com/maps/dir/?api=1&origin=${startingMetro.center.latitude},${startingMetro.center.longitude}&destination=${firstStop.latitude},${firstStop.longitude}&travelmode=walking`
+      ? buildSingleDestinationNavUrl(
+          {
+            latitude: firstStop.latitude,
+            longitude: firstStop.longitude,
+            name: firstStop.placeName,
+            locality: firstStop.locality,
+          },
+          {
+            latitude: startingMetro.center.latitude,
+            longitude: startingMetro.center.longitude,
+            name: `${startingMetro.name} Metro Station`,
+          } as any,
+          "walking"
+        )
       : undefined;
 
   return (
@@ -576,16 +594,22 @@ export function RouteSummary({ itinerary }: RouteSummaryProps) {
       latitude: s.latitude!,
       longitude: s.longitude!,
       name: s.placeName,
+      locality: s.locality,
     }));
 
   const navOrigin =
-    itinerary.startingMetro?.center ||
-    (preferences.startingLatitude && preferences.startingLongitude
+    itinerary.startingMetro
+      ? ({
+          latitude: itinerary.startingMetro.center.latitude,
+          longitude: itinerary.startingMetro.center.longitude,
+          name: `${itinerary.startingMetro.name} Metro Station`,
+        } as any)
+      : preferences.startingLatitude && preferences.startingLongitude
       ? {
           latitude: preferences.startingLatitude,
           longitude: preferences.startingLongitude,
         }
-      : undefined);
+      : undefined;
 
   const multiStopNav =
     validNavStops.length > 0

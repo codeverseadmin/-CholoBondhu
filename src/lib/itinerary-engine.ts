@@ -20,6 +20,7 @@ import {
   defaultRoutingProvider,
   getExternalNavigationUrl,
 } from "@/lib/routing-provider";
+import { buildSingleDestinationNavUrl } from "@/lib/navigation-links";
 import {
   runPlanningPipeline,
   type PlanningPipelineResult,
@@ -180,11 +181,14 @@ export function recalculateTiming(
       routingMethodology: routeRes.methodology,
       navigationUrl:
         stop.latitude && stop.longitude
-          ? getExternalNavigationUrl(
-              stop.latitude,
-              stop.longitude,
-              prevLat,
-              prevLng,
+          ? buildSingleDestinationNavUrl(
+              {
+                latitude: stop.latitude,
+                longitude: stop.longitude,
+                name: stop.placeName,
+                locality: stop.locality,
+              },
+              prevLat && prevLng ? { latitude: prevLat, longitude: prevLng } : undefined,
               prefs.transportMode
             )
           : undefined,

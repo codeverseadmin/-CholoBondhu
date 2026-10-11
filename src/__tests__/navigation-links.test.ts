@@ -14,21 +14,40 @@ describe("Zero-Credential External Navigation Links", () => {
   const EKDALIA = { latitude: 22.5218, longitude: 88.3672, name: "Ekdalia Evergreen" };
 
   describe("buildSingleDestinationNavUrl", () => {
-    it("generates a valid Google Maps Directions URL without requiring any API key", () => {
+    it("generates a valid Google Maps Directions URL targeting official named place POI entity", () => {
       const url = buildSingleDestinationNavUrl(KUMARTULI);
 
       expect(url).toContain("https://www.google.com/maps/dir/?api=1");
-      expect(url).toContain(`destination=${encodeURIComponent("22.594700,88.367700")}`);
+      expect(url).toContain(`destination=${encodeURIComponent("Kumartuli Park Sarbojanin, Kolkata")}`);
       expect(url).toContain("travelmode=walking");
       expect(url).not.toContain("key=");
       expect(url).not.toContain("AIza");
+    });
+
+    it("falls back cleanly to coordinate pairs when no place name is provided", () => {
+      const anonymousTarget = { latitude: 22.5947, longitude: 88.3677 };
+      const url = buildSingleDestinationNavUrl(anonymousTarget);
+
+      expect(url).toContain(`destination=${encodeURIComponent("22.594700,88.367700")}`);
+      expect(url).toContain("travelmode=walking");
     });
 
     it("includes origin coordinates when specified", () => {
       const url = buildSingleDestinationNavUrl(BAGBAZAR, { latitude: 22.5992, longitude: 88.3698 }, "walking");
 
       expect(url).toContain(`origin=${encodeURIComponent("22.599200,88.369800")}`);
-      expect(url).toContain(`destination=${encodeURIComponent("22.598500,88.369700")}`);
+      expect(url).toContain(`destination=${encodeURIComponent("Bagbazar Sarbojanin, Kolkata")}`);
+    });
+
+    it("includes locality in destination query when provided", () => {
+      const url = buildSingleDestinationNavUrl({
+        latitude: 22.5218,
+        longitude: 88.3672,
+        name: "Ekdalia Evergreen",
+        locality: "Gariahat",
+      });
+
+      expect(url).toContain(`destination=${encodeURIComponent("Ekdalia Evergreen, Gariahat, Kolkata")}`);
     });
 
     it("maps travel modes correctly to Google Maps URL parameters", () => {
@@ -85,8 +104,18 @@ describe("Zero-Credential External Navigation Links", () => {
   });
 
   describe("buildLegNavUrl", () => {
-    it("generates leg navigation from point A to point B", () => {
+    it("generates leg navigation from point A to point B using named places", () => {
       const legUrl = buildLegNavUrl(KUMARTULI, BAGBAZAR, "walking");
+
+      expect(legUrl).toContain(`origin=${encodeURIComponent("Kumartuli Park Sarbojanin, Kolkata")}`);
+      expect(legUrl).toContain(`destination=${encodeURIComponent("Bagbazar Sarbojanin, Kolkata")}`);
+      expect(legUrl).toContain("travelmode=walking");
+    });
+
+    it("generates leg navigation from point A to point B using coordinates when unnamed", () => {
+      const anonA = { latitude: 22.5947, longitude: 88.3677 };
+      const anonB = { latitude: 22.5985, longitude: 88.3697 };
+      const legUrl = buildLegNavUrl(anonA, anonB, "walking");
 
       expect(legUrl).toContain(`origin=${encodeURIComponent("22.594700,88.367700")}`);
       expect(legUrl).toContain(`destination=${encodeURIComponent("22.598500,88.369700")}`);
